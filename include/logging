@@ -1,0 +1,60 @@
+#!/bin/bash
+
+function ansi {
+    "$INCLUDE_DIR/ansi" "$@"
+}
+
+function log_error {
+    >&2 ansi --no-newline --red "Error: "
+    >&2 ansi "$1"
+}
+
+function log_warning {
+    >&2 ansi --no-newline --yellow "Warning: "
+    >&2 ansi "$1"
+}
+
+function log_progress {
+    local -r CURRENT="$1"
+    local -r TOTAL="$2"
+    local -r STEP="$3"
+    local -r TEXT="$(printf "\n[%*s/%s] %s" "${#TOTAL}" "$CURRENT" "$TOTAL" "$STEP")"
+    ansi --bold "$TEXT"
+}
+
+function log_info {
+    ansi "$@"
+}
+
+function log_info_nonewline {
+    ansi --no-newline "$@"
+}
+
+function log_info_bright {
+    ansi --bold "$@"
+}
+
+function log_status {
+    local -r STATUS="$1"
+    case "$STATUS" in
+        OK|PASSED)
+            ansi --green "$STATUS";;
+        ERROR|FAILED)
+            ansi --red "$STATUS";;
+        SKIPPED)
+            ansi --white --faint "$STATUS";;
+    esac
+}
+
+function log_summary {
+    local -r TOTAL="$1"
+    local -r PASSED="$2"
+    local -r FAILED="$3"
+    local -r SKIPPED="$4"
+    echo ""
+    ansi --bold "Summary:"
+    ansi                    --no-newline "TOTAL:   " && echo "$TOTAL"
+    ansi --green            --no-newline "PASSED:  " && echo "$PASSED"
+    ansi --red              --no-newline "FAILED:  " && echo "$FAILED"
+    ansi --white --faint    --no-newline "SKIPPED: " && echo "$SKIPPED"
+}
