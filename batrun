@@ -135,8 +135,8 @@ function parse_args {
                 log_error "Not implemented."
                 exit 1;;
             --list-tests)
-                log_error "Not implemented."
-                exit 1;;
+                list_tests
+                exit 0;;
             --dry-run|-n)
                 DRY_RUN=1
                 shift;;
@@ -227,6 +227,46 @@ function list_known_devices {
     log_info_bright "Known devices:"
     for DEVICE in "${!KNOWN_DEVICES[@]}"; do
         log_info "  ${KNOWN_DEVICES[$DEVICE]}"
+    done
+}
+
+##
+# Get all the tests defined by the current test suite
+#
+# TEST_DIR must be set before calling this function, otherwise the tests from
+# the internal validation test suite is returned
+#
+# Arguments
+#   $1 (out): name of the array to populate
+#
+# Globals
+#   TESTS_DIR (in)
+#   GLOBAL_TEST_FILE (in)
+#
+function get_tests {
+    local -n MUT_REF_TESTS="$1"
+    MUT_REF_TESTS=()
+    local -a TEST_FILES
+    readarray -t TEST_FILES < <(find "$TESTS_DIR" -type f -name "*.sh" -not -wholename "$(global_test_file)" -follow -print | sort)
+    for TEST_FILE in "${TEST_FILES[@]}"; do
+        TEST_ID="$(realpath --relative-to="$TESTS_DIR" "${TEST_FILE%.sh}")"
+        readarray -t TEST_FUNCTIONS < <(get_test_fn_in_file "$TEST_FILE")
+        MUT_REF_TESTS+=( "${TEST_FUNCTIONS[@]/#/"${TEST_ID}::"}" )
+    done
+}
+
+##
+# List the tests defined by the current test suite
+#
+# Globals
+#   TESTS_DIR (in)
+#   GLOBAL_TEST_FILE (in)
+#
+function list_tests {
+    get_tests TESTS
+    log_info_bright "Tests defined in test suite \`$TESTS_DIR\`:"
+    for TEST in "${TESTS[@]}"; do
+        log_info "  $TEST"
     done
 }
 
