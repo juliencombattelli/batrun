@@ -172,7 +172,7 @@ function global_test_file {
 }
 
 ##
-# Get the declaration of KNOWN_DEVICES provided by the current tests
+# Get the declaration of KNOWN_DEVICES provided by the current test suite
 #
 # The function output must be evaluated using `eval "$(known_devices)"` to
 # redeclare the variable in the current scope
@@ -184,6 +184,9 @@ function global_test_file {
 #   TESTS_DIR (in)
 #   GLOBAL_TEST_FILE (in)
 #   KNOWN_DEVICES (in)
+#
+# Outputs
+#   stdout: the bash declaration command for the KNOWN_DEVICES array
 #
 function known_devices {
     bash -e -u -o pipefail -c "source \"$(global_test_file)\" && declare -p KNOWN_DEVICES" 2>/dev/null
@@ -210,7 +213,12 @@ function validate_known_devices {
 }
 
 ##
-# Validate all required components that a user-provided test suite should define
+# Validate all required components that a user-provided test suite must define
+#
+# Globals
+#   TESTS_DIR (in)
+#   GLOBAL_TEST_FILE (in)
+#   KNOWN_DEVICES (in)
 #
 function validate_test_dir {
     validate_known_devices
@@ -224,7 +232,7 @@ function validate_test_dir {
 #
 function list_known_devices {
     eval "$(known_devices)"
-    log_info_bright "Known devices:"
+    log_info_bright "Known devices in test suite \`$TESTS_DIR\`:"
     for DEVICE in "${!KNOWN_DEVICES[@]}"; do
         log_info "  ${KNOWN_DEVICES[$DEVICE]}"
     done
