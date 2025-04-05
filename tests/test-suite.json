@@ -1,0 +1,8 @@
+{
+    "name": "batrun-internal-validation-suite",
+    "description": "Test suite to validate batrun",
+    "version": "0.1",
+    "driver": "bash",
+    "_test-file-pattern": "*.sh",
+    "global-fixture": "tests.sh"
+}

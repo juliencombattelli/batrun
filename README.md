@@ -2,6 +2,10 @@
 
 Bash Test Runner, a framework to write and execute tests in bash
 
+## Installing
+
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 ## Usage
 
 ## Writing tests

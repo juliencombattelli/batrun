@@ -14,6 +14,14 @@ description.
 
 ## Coding conventions
 
+### Followed conventions
+
+Batrun is written in Python and packaged following
+the [Python Packaging User Guide](https://packaging.python.org/)
+and [Python Developer Tooling Handbook](https://pydevtools.com/handbook/).
+
+## Coding conventions for the old Bash implementation
+
 ### Minimum Bash version
 
 Batrun is written in Bash and required at least version 4.4.

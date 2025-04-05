@@ -1,6 +1,9 @@
 {
     "recommendations": [
         "timonwong.shellcheck",
-        "jeff-hykin.better-shellscript-syntax"
+        "jeff-hykin.better-shellscript-syntax",
+        "mads-hartmann.bash-ide-vscode",
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml"
     ]
 }

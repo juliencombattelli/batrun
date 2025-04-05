@@ -1,7 +1,6 @@
 {
-    "cSpell.words": [
-        "inout",
-        "nonewline",
-        "wholename"
-    ]
+    "cSpell.words": [],
+    "[rust]": {
+        "editor.formatOnSave": true
+    }
 }
