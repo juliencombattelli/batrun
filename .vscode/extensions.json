@@ -1,6 +1,9 @@
 {
     "recommendations": [
         "timonwong.shellcheck",
-        "jeff-hykin.better-shellscript-syntax"
+        "jeff-hykin.better-shellscript-syntax",
+        "ms-python.black-formatter",
+        "ms-python.python",
+        "mads-hartmann.bash-ide-vscode"
     ]
 }
