@@ -13,8 +13,8 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::time::Instant;
 
-// TODO avoid clap dependency here
-#[derive(Debug, Copy, Clone, clap::ValueEnum)]
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum ExecutionStrategy {
     /// Run all test cases sequentially for a target before passing to the next target
     Sequential,
