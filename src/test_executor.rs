@@ -11,7 +11,11 @@ use crate::time::TimeInterval;
 use std::collections::HashMap;
 
 pub trait Executor {
-    fn execute(&self, test_driver: &Box<dyn TestDriver>);
+    fn execute(
+        &self,
+        execution_contexts: &[ExecutionContext],
+        test_driver: &Box<(dyn TestDriver + 'static)>,
+    );
 }
 
 #[derive(Debug)]
@@ -62,7 +66,7 @@ impl TestCaseExecInfo {
 }
 
 #[derive(Debug)]
-struct ExecutionContext<'ts> {
+pub struct ExecutionContext<'ts> {
     test_suite: &'ts TestSuite,
     target: String,
     state: TestSuiteState,

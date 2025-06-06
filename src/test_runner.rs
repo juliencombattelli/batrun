@@ -1,9 +1,12 @@
+use crate::ExecutionStrategy;
 use crate::error::{self, Result};
 use crate::reporter::Reporter;
 use crate::reporter::human_friendly::HumanFriendlyReporter;
 use crate::settings::Settings;
 use crate::test_driver::TestDriverRegistry;
-use crate::test_executor::utils::simple_executor;
+use crate::test_executor::round_robin::RoundRobinExecutor;
+use crate::test_executor::sequential::SequentialExecutor;
+use crate::test_executor::{ExecutionContext, Executor};
 use crate::test_suite::TestSuiteConfig;
 use crate::test_suite::TestSuiteRegistry;
 
@@ -49,32 +52,22 @@ impl TestRunner {
         self.prepare_out_dir()?;
         let test_suite = self.test_suites.get_mut(test_suite_dir)?;
         let test_driver = self.test_drivers.get(&test_suite.config().driver)?;
-        // let _ = test_suite.visit_mut(|tc| {
-        //     for target in &self.settings.targets {
-        //         match test_driver.run_test(test_suite_dir, target, tc) {
-        //             Ok(TestCaseStatus::Skipped(_) | TestCaseStatus::Failed) => crate::test_suite::TestSuiteVisitStatus::Skip,
-        //             _ = crate::test_suite::TestSuiteVisitStatus::Continue,
-        //         }
-        //     }
-        //     Ok(crate::test_suite::TestSuiteVisitStatus::Continue)
-        // });
 
-        let mut per_target_tasks: Vec<Pin<Box<dyn Future<Output = ()>>>> = Vec::new();
+        let executor: Box<dyn Executor> = match self.settings.exec_strategy {
+            ExecutionStrategy::RoundRobin => Box::new(RoundRobinExecutor {}),
+            ExecutionStrategy::Sequential => Box::new(SequentialExecutor {}),
+            _ => todo!("{:X?}", self.settings.exec_strategy),
+        };
 
-        for target in &self.settings.targets {
-            let task = async || {
-                let target = target.clone();
-                test_suite
-                    .visit2(async |test_case, should_skip| {
-                        test_driver.run_test(test_suite_dir, &target, test_case);
-                        simple_executor::wait_until_next_poll().await;
-                        crate::test_suite::TestSuiteVisitResult::Ok
-                    })
-                    .await;
-            };
-            per_target_tasks.push(Box::pin(task()));
-        }
-        simple_executor::execute_many(per_target_tasks);
+        let execution_contexts = &self
+            .settings
+            .targets
+            .iter()
+            .map(|target| ExecutionContext::new(&test_suite, target.clone()))
+            .collect::<Vec<_>>();
+
+        executor.execute(&execution_contexts, test_driver);
+
         Ok(())
     }
 
