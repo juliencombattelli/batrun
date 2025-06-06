@@ -1,8 +1,7 @@
 use std::collections::VecDeque;
 use std::future::Future;
 use std::pin::Pin;
-use std::ptr;
-use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+use std::task::{Context, Poll, Waker};
 
 pub fn wait_until_next_poll() -> impl Future<Output = ()> {
     WaitUntilNextPoll {
@@ -28,7 +27,7 @@ impl Future for WaitUntilNextPoll {
 }
 
 pub fn execute_many<'a>(fs: Vec<Pin<Box<dyn Future<Output = ()> + 'a>>>) {
-    let waker = noop_waker();
+    let waker = Waker::noop();
     let mut ctx = Context::from_waker(&waker);
 
     let mut queue = VecDeque::from(fs);
@@ -41,22 +40,4 @@ pub fn execute_many<'a>(fs: Vec<Pin<Box<dyn Future<Output = ()> + 'a>>>) {
             queue.push_back(f);
         }
     }
-}
-
-fn noop_waker() -> Waker {
-    const NOOP: RawWaker = {
-        const VTABLE: RawWakerVTable = RawWakerVTable::new(
-            // Cloning just returns a new no-op raw waker
-            |_| NOOP,
-            // `wake` does nothing
-            |_| {},
-            // `wake_by_ref` does nothing
-            |_| {},
-            // Dropping does nothing as we don't allocate anything
-            |_| {},
-        );
-        RawWaker::new(ptr::null(), &VTABLE)
-    };
-
-    unsafe { Waker::from_raw(NOOP) }
 }
