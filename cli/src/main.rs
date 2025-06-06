@@ -45,7 +45,7 @@ pub fn batrun_cli_styles() -> clap::builder::Styles {
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "Bash test runner", styles = batrun_cli_styles())]
+#[clap(name = "batrun", styles = batrun_cli_styles(), version)]
 struct Cli {
     /// Directory where the test suite is located
     #[arg(required = true, value_name = "TEST_SUITE_DIR")]
