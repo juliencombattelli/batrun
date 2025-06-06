@@ -17,15 +17,12 @@ struct WaitUntilNextPoll {
 impl Future for WaitUntilNextPoll {
     type Output = ();
 
-    fn poll(
-        mut self: std::pin::Pin<&mut Self>,
-        _: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
         if self.already_polled {
-            std::task::Poll::Ready(())
+            Poll::Ready(())
         } else {
             self.already_polled = true;
-            std::task::Poll::Pending
+            Poll::Pending
         }
     }
 }
@@ -63,27 +60,3 @@ fn noop_waker() -> Waker {
 
     unsafe { Waker::from_raw(NOOP) }
 }
-
-// async fn print_squares1_async(i: u64) {
-//     println!("1. sqr({i}) = {}", i * i);
-//     wait_until_next_poll().await;
-// }
-
-// async fn print_squares2_async(i: u64) {
-//     println!("2. sqr({i}) = {}", i * i);
-//     wait_until_next_poll().await;
-// }
-
-// fn main() {
-//     let f1 = async || {
-//         for i in 1..10 {
-//             print_squares1_async(i).await;
-//         }
-//     };
-//     let f2 = async || {
-//         for i in 1..3 {
-//             print_squares2_async(i).await;
-//         }
-//     };
-//     execute_many(vec![Box::pin(f1()), Box::pin(f2())]);
-// }

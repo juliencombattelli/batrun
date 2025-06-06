@@ -1,39 +1,16 @@
 use crate::error::{self, Result};
 use crate::reporter::Reporter;
 use crate::reporter::human_friendly::HumanFriendlyReporter;
-use crate::simple_executor;
-use crate::test_driver::{TestDriver, TestDriverRegistry};
+use crate::settings::Settings;
+use crate::test_driver::TestDriverRegistry;
+use crate::test_executor::utils::simple_executor;
 use crate::test_suite::TestSuiteConfig;
-use crate::test_suite::{self, TestCase, TestCaseState, TestSuite, TestSuiteRegistry};
-use crate::time::TimeInterval;
+use crate::test_suite::TestSuiteRegistry;
 
-use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::pin::Pin;
 use std::time::Instant;
-
-#[derive(Debug, Copy, Clone)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-pub enum ExecutionStrategy {
-    /// Run all test cases sequentially for a target before passing to the next target
-    Sequential,
-    /// Run each test case for all targets before passing to the next test case
-    RoundRobin,
-    /// Run all test cases for each targets in parallel
-    Parallel,
-}
-
-#[derive(Debug)]
-pub struct Settings {
-    pub test_suite_dirs: Vec<PathBuf>,
-    pub out_dir: PathBuf,
-    pub targets: Vec<String>,
-    pub exec_strategy: ExecutionStrategy,
-    pub dry_run: bool,
-    pub test_filter: Option<String>,
-    pub debug: bool,
-}
 
 pub struct TestRunner {
     settings: Settings,
@@ -86,9 +63,11 @@ impl TestRunner {
 
         for target in &self.settings.targets {
             let task = async || {
+                let target = target.clone();
                 test_suite
-                    .visit2(async |tc, should_skip| {
-                        run_test_async(test_driver, test_suite.path(), target.clone(), &tc).await;
+                    .visit2(async |test_case, should_skip| {
+                        test_driver.run_test(test_suite_dir, &target, test_case);
+                        simple_executor::wait_until_next_poll().await;
                         crate::test_suite::TestSuiteVisitResult::Ok
                     })
                     .await;
@@ -145,139 +124,4 @@ impl TestRunner {
         }
         Ok(())
     }
-}
-
-#[derive(Debug)]
-struct ExecStats {
-    passed: usize,
-    failed: usize,
-    skipped: usize,
-}
-
-#[derive(Debug)]
-enum TestSuiteState {
-    NotRun,
-    Running,
-    Aborted(String),
-    Finished(ExecStats),
-}
-
-#[derive(Debug)]
-struct TestCaseExecInfo {
-    state: TestCaseState,
-    duration: TimeInterval,
-}
-impl TestCaseExecInfo {
-    fn new() -> Self {
-        Self {
-            state: TestCaseState::NotRun,
-            duration: TimeInterval::new(),
-        }
-    }
-    pub fn set_status(&mut self, state: TestCaseState) {
-        match state {
-            TestCaseState::NotRun => {
-                panic!("Test case status cannot be reset")
-            }
-            TestCaseState::Running => {
-                self.state = state;
-                self.duration = TimeInterval::new();
-            }
-            _ => {
-                self.state = state;
-                self.duration.stop();
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-struct TestSuiteExecutor<'ts> {
-    test_suite: &'ts TestSuite,
-    target: String,
-    state: TestSuiteState,
-    exec_info: HashMap<TestCase, TestCaseExecInfo>,
-}
-
-impl<'ts> TestSuiteExecutor<'ts> {
-    pub fn new(test_suite: &'ts TestSuite, target: String) -> Self {
-        let mut exec_info = HashMap::<TestCase, TestCaseExecInfo>::new();
-        test_suite.visit(|tc| {
-            exec_info.insert(tc.clone(), TestCaseExecInfo::new());
-        });
-        Self {
-            test_suite,
-            target,
-            state: TestSuiteState::NotRun,
-            exec_info,
-        }
-    }
-
-    pub async fn execute(&self, test_driver: &Box<dyn TestDriver>) {
-        self.test_suite
-            .visit2(async |tc, should_skip| {
-                run_test_async(
-                    test_driver,
-                    self.test_suite.path(),
-                    self.target.clone(),
-                    &tc,
-                )
-                .await;
-                crate::test_suite::TestSuiteVisitResult::Ok
-            })
-            .await;
-        // if let Some(tc) = &self.test_suite.fixture().setup_test_case {
-        //     run_test_async(test_driver, self.test_suite.path(), &self.target, &tc).await;
-        // }
-        // for test_file in self.test_suite.test_files() {
-        //     if let Some(tc) = &test_file.setup_test_case {
-        //         run_test_async(test_driver, self.test_suite.path(), &self.target, &tc).await;
-        //     }
-        //     for tc in &test_file.test_cases {
-        //         run_test_async(test_driver, self.test_suite.path(), &self.target, &tc).await;
-        //     }
-        //     if let Some(tc) = &test_file.teardown_test_case {
-        //         run_test_async(test_driver, self.test_suite.path(), &self.target, &tc).await;
-        //     }
-        // }
-        // if let Some(tc) = &self.test_suite.fixture().teardown_test_case {
-        //     run_test_async(test_driver, self.test_suite.path(), &self.target, &tc).await;
-        // }
-    }
-}
-
-pub fn wait_until_next_poll() -> impl Future<Output = ()> {
-    WaitUntilNextPoll {
-        already_polled: false,
-    }
-}
-
-struct WaitUntilNextPoll {
-    already_polled: bool,
-}
-
-impl Future for WaitUntilNextPoll {
-    type Output = ();
-
-    fn poll(
-        mut self: std::pin::Pin<&mut Self>,
-        _: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        if self.already_polled {
-            std::task::Poll::Ready(())
-        } else {
-            self.already_polled = true;
-            std::task::Poll::Pending
-        }
-    }
-}
-
-async fn run_test_async(
-    test_driver: &Box<dyn TestDriver>,
-    test_suite_dir: &Path,
-    target: String,
-    test_case: &TestCase,
-) {
-    test_driver.run_test(test_suite_dir, &target, test_case);
-    wait_until_next_poll().await;
 }

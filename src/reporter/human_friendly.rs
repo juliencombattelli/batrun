@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::reporter::Reporter;
-use crate::test_suite::{TestCase, TestSuite};
+use crate::test_suite::TestSuite;
 
 use colored::{ColoredString, Colorize};
 

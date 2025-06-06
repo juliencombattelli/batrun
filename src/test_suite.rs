@@ -173,11 +173,7 @@ impl TestSuite {
     pub async fn visit2(
         &self,
         mut f: impl AsyncFnMut(&TestCase, ShouldSkip) -> TestSuiteVisitResult,
-    )
-    // where
-    //     F: for<'c> FnMut(&'c TestCase, ShouldSkip) -> Fut,
-    //     Fut: Future<Output = TestSuiteVisitResult>,
-    {
+    ) {
         let mut should_skip_suite = ShouldSkip::No;
         if let Some(tc) = &self.fixture.setup_test_case {
             if let TestSuiteVisitResult::Err = f(tc, should_skip_suite).await {
@@ -202,32 +198,6 @@ impl TestSuite {
             f(tc, should_skip_suite).await;
         }
     }
-
-    // pub fn visit_mut<F>(&mut self, f: F) -> TestSuiteVisitResult
-    // where
-    //     F: Fn(&mut TestCase) -> TestSuiteVisitResult,
-    // {
-    //     if let Some(tc) = &mut self.fixture.setup_test_case {
-    //         f(tc)?;
-    //     }
-    //     for test_file in &mut self.test_files {
-    //         if let Some(tc) = &mut test_file.setup_test_case {
-    //             if let TestSuiteVisitStatus::Skip = f(tc)? {
-    //                 continue;
-    //             }
-    //         }
-    //         for tc in &mut test_file.test_cases {
-    //             f(tc);
-    //         }
-    //         if let Some(tc) = &mut test_file.teardown_test_case {
-    //             f(tc);
-    //         }
-    //     }
-    //     if let Some(tc) = &mut self.fixture.teardown_test_case {
-    //         f(tc);
-    //     }
-    //     Ok(())
-    // }
 }
 
 #[derive(Debug)]
