@@ -7,12 +7,11 @@ use crate::test_driver::TestDriverRegistry;
 use crate::test_executor::round_robin::RoundRobinExecutor;
 use crate::test_executor::sequential::SequentialExecutor;
 use crate::test_executor::{ExecutionContext, Executor};
-use crate::test_suite::TestSuiteConfig;
-use crate::test_suite::TestSuiteRegistry;
+use crate::test_suite::config::TestSuiteConfig;
+use crate::test_suite::registry::TestSuiteRegistry;
 
 use std::fs;
 use std::path::Path;
-use std::pin::Pin;
 use std::time::Instant;
 
 pub struct TestRunner {

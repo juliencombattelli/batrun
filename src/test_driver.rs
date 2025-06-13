@@ -1,5 +1,6 @@
 use crate::error::{Error, Result};
-use crate::test_suite::{TestCase, TestCaseState, TestSuite, TestSuiteConfig};
+use crate::test_suite::config::TestSuiteConfig;
+use crate::test_suite::{TestCase, TestCaseState, TestSuite};
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

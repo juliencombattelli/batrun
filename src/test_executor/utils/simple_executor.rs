@@ -41,3 +41,7 @@ pub fn execute_many<'a>(fs: Vec<Pin<Box<dyn Future<Output = ()> + 'a>>>) {
         }
     }
 }
+
+// pub fn block_on<F: IntoFuture>(fut: F) -> F::Output {
+//     execute_many(vec![Box::pin(task())])
+// }

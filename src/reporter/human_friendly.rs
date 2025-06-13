@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::reporter::Reporter;
 use crate::test_suite::TestSuite;
+use crate::test_suite::visitor::Visitor;
 
 use colored::{ColoredString, Colorize};
 
@@ -53,9 +54,8 @@ impl Reporter for HumanFriendlyReporter {
             )
             .bright_white()
         );
-        test_suite.visit::<Result<(), ()>, _>(|tc| {
+        Visitor::new(&test_suite).visit_all_ok(|tc, _| {
             println!("  {}", tc.id().white());
-            Ok(())
         });
         println!("");
     }

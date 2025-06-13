@@ -5,6 +5,7 @@ pub mod sequential;
 pub mod utils; // TODO make private as executor utilities shall only be used by executor implementations
 
 use crate::test_driver::TestDriver;
+use crate::test_suite::visitor::Visitor;
 use crate::test_suite::{TestCase, TestCaseState, TestSuite};
 use crate::time::TimeInterval;
 
@@ -18,13 +19,13 @@ pub trait Executor {
     );
 }
 
-#[derive(Debug)]
-struct ExecStats {
+#[derive(Clone, Debug)]
+pub struct Statistics {
     passed: usize,
     failed: usize,
     skipped: usize,
+    not_executed: usize,
 }
-
 #[derive(Debug)]
 struct AbortReason(String);
 
@@ -33,7 +34,7 @@ enum TestSuiteState {
     NotRun,
     Running,
     Aborted(AbortReason),
-    Finished(ExecStats),
+    Finished(Statistics),
 }
 
 #[derive(Debug)]
@@ -76,7 +77,7 @@ pub struct ExecutionContext<'ts> {
 impl<'ts> ExecutionContext<'ts> {
     pub fn new(test_suite: &'ts TestSuite, target: String) -> Self {
         let mut exec_info = HashMap::<TestCase, TestCaseExecInfo>::new();
-        test_suite.visit(|tc| {
+        Visitor::new(&test_suite).visit_all_ok(|tc, _| {
             exec_info.insert(tc.clone(), TestCaseExecInfo::new());
         });
         Self {
@@ -85,11 +86,5 @@ impl<'ts> ExecutionContext<'ts> {
             state: TestSuiteState::NotRun,
             exec_info,
         }
-    }
-
-    pub async fn execute(&self, test_driver: &Box<dyn TestDriver>) {
-        self.test_suite
-            .visit2(async |tc, should_skip| crate::test_suite::TestSuiteVisitResult::Ok)
-            .await;
     }
 }

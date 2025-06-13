@@ -1,8 +1,7 @@
 use crate::error::{self, Error, Result};
 use crate::test_driver::TestDriver;
-use crate::test_suite::{
-    TestCase, TestCaseState, TestFile, TestSuite, TestSuiteConfig, TestSuiteFixture,
-};
+use crate::test_suite::config::TestSuiteConfig;
+use crate::test_suite::{TestCase, TestCaseState, TestFile, TestSuite, TestSuiteFixture};
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

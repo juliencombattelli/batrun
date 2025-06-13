@@ -1,8 +1,9 @@
+use crate::error::Error;
 use crate::test_driver::TestDriver;
 use crate::test_executor::utils::simple_executor;
 use crate::test_executor::{ExecutionContext, Executor};
+use crate::test_suite::visitor::Visitor;
 
-use std::pin::Pin;
 pub struct SequentialExecutor;
 
 impl Executor for SequentialExecutor {
@@ -15,14 +16,19 @@ impl Executor for SequentialExecutor {
             let task = async || {
                 let target = exec_context.target.clone();
                 let test_suite_dir = exec_context.test_suite.path();
-                exec_context
-                    .test_suite
-                    .visit2(async |test_case, should_skip| {
-                        test_driver.run_test(test_suite_dir, &target, test_case);
-                        simple_executor::wait_until_next_poll().await;
-                        crate::test_suite::TestSuiteVisitResult::Ok
-                    })
-                    .await;
+                let mut visitor = Visitor::new(&exec_context.test_suite);
+                loop {
+                    let (done, _) =
+                        visitor.visit_next(|test_case, should_skip| -> Result<(), Error> {
+                            let _tc_state =
+                                test_driver.run_test(test_suite_dir, &target, test_case)?;
+                            Ok(())
+                        });
+                    if done {
+                        break;
+                    }
+                    simple_executor::wait_until_next_poll().await;
+                }
             };
             simple_executor::execute_many(vec![Box::pin(task())]);
         }
