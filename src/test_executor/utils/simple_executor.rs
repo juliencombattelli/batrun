@@ -26,7 +26,7 @@ impl Future for WaitUntilNextPoll {
     }
 }
 
-pub fn execute_many<'a>(fs: Vec<Pin<Box<dyn Future<Output = ()> + 'a>>>) {
+pub fn block_on_many<'a>(fs: Vec<Pin<Box<dyn Future<Output = ()> + 'a>>>) {
     let waker = Waker::noop();
     let mut ctx = Context::from_waker(&waker);
 

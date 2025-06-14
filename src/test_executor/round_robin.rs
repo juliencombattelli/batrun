@@ -36,6 +36,6 @@ impl Executor for RoundRobinExecutor {
 
             per_target_tasks.push(Box::pin(task()));
         }
-        simple_executor::execute_many(per_target_tasks);
+        simple_executor::block_on_many(per_target_tasks);
     }
 }
