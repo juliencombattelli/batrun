@@ -42,6 +42,14 @@ pub fn execute_many<'a>(fs: Vec<Pin<Box<dyn Future<Output = ()> + 'a>>>) {
     }
 }
 
-// pub fn block_on<F: IntoFuture>(fut: F) -> F::Output {
-//     execute_many(vec![Box::pin(task())])
-// }
+pub fn block_on<F: Future>(f: F) -> F::Output {
+    let waker = Waker::noop();
+    let mut ctx = Context::from_waker(&waker);
+    let mut pinned_f = std::pin::pin!(f);
+    loop {
+        match pinned_f.as_mut().poll(&mut ctx) {
+            Poll::Pending => continue,
+            Poll::Ready(value) => return value,
+        }
+    }
+}

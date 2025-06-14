@@ -30,7 +30,7 @@ impl Executor for SequentialExecutor {
                     simple_executor::wait_until_next_poll().await;
                 }
             };
-            simple_executor::execute_many(vec![Box::pin(task())]);
+            simple_executor::block_on(task());
         }
     }
 }
