@@ -1,22 +1,22 @@
-use crate::error::Error;
+use crate::test_driver::TestDriver;
 use crate::test_executor::{ExecutionContext, Executor};
+use crate::test_suite::TestSuite;
 use crate::test_suite::visitor::Visitor;
 
 pub struct SequentialExecutor;
 
-impl Executor for SequentialExecutor {
-    fn execute(&self, execution_contexts: &[ExecutionContext]) {
+impl<'tr> Executor<'tr> for SequentialExecutor {
+    fn execute(
+        &self,
+        test_driver: &'tr Box<(dyn TestDriver + 'static)>,
+        test_suite: &'tr TestSuite,
+        execution_contexts: &'tr mut [ExecutionContext],
+    ) {
         for exec_context in execution_contexts {
-            let target = exec_context.target.clone();
-            let test_suite_dir = exec_context.test_suite.path();
-            let mut visitor = Visitor::new(&exec_context.test_suite);
+            let mut visitor = Visitor::new(&test_suite);
             loop {
-                let (done, _) = visitor.visit_next(|test_case, should_skip| -> Result<(), Error> {
-                    let _tc_state =
-                        exec_context
-                            .test_driver
-                            .run_test(test_suite_dir, &target, test_case)?;
-                    Ok(())
+                let done = visitor.visit_next_ok(|test_case, should_skip| {
+                    exec_context.run(test_driver, test_suite, test_case, should_skip);
                 });
                 if done {
                     break;

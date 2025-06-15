@@ -49,6 +49,15 @@ impl<'ts> Visitor<'ts> {
         (done, result)
     }
 
+    pub fn visit_next_ok(&mut self, mut f: impl VisitorFnMutOk) -> bool {
+        let mut f_wrapped = |test_case: &TestCase, should_skip: ShouldSkip| -> Result<(), ()> {
+            f(&test_case, should_skip);
+            Ok(())
+        };
+        let (is_done, _result) = self.visit_next(&mut f_wrapped);
+        is_done
+    }
+
     pub fn visit_all<E>(&mut self, mut f: impl VisitorFnMut<E>) {
         loop {
             let (is_done, _result) = self.visit_next(&mut f);

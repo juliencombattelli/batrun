@@ -52,20 +52,19 @@ impl TestRunner {
         let test_suite = self.test_suites.get_mut(test_suite_dir)?;
         let test_driver = self.test_drivers.get(&test_suite.config().driver)?;
 
+        let mut execution_contexts = self
+            .settings
+            .targets
+            .iter()
+            .map(|target| ExecutionContext::new(&test_suite, target.clone()))
+            .collect::<Vec<_>>();
+
         let executor: Box<dyn Executor> = match self.settings.exec_strategy {
             ExecutionStrategy::RoundRobin => Box::new(RoundRobinExecutor {}),
             ExecutionStrategy::Sequential => Box::new(SequentialExecutor {}),
             _ => todo!("{:X?}", self.settings.exec_strategy),
         };
-
-        let execution_contexts = &self
-            .settings
-            .targets
-            .iter()
-            .map(|target| ExecutionContext::new(&test_suite, test_driver, target.clone()))
-            .collect::<Vec<_>>();
-
-        executor.execute(&execution_contexts);
+        executor.execute(&test_driver, &test_suite, &mut execution_contexts);
 
         Ok(())
     }
