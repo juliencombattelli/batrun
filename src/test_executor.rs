@@ -2,7 +2,7 @@ pub mod parallel;
 pub mod round_robin;
 pub mod sequential;
 
-pub mod utils; // TODO make private as executor utilities shall only be used by executor implementations
+mod utils;
 
 use crate::test_driver::TestDriver;
 use crate::test_suite::status::{TestCaseStatus, TestSuiteStatus};
