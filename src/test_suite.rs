@@ -4,7 +4,6 @@ pub mod status;
 pub mod visitor;
 
 use self::config::TestSuiteConfig;
-use crate::time::TimeInterval;
 
 use std::path::{Path, PathBuf};
 
@@ -14,7 +13,6 @@ pub struct TestSuite {
     config: TestSuiteConfig,
     fixture: TestSuiteFixture,
     test_files: Vec<TestFile>,
-    duration: TimeInterval,
 }
 
 impl TestSuite {
@@ -30,7 +28,6 @@ impl TestSuite {
             config,
             fixture,
             test_files,
-            duration: TimeInterval::new(),
         }
     }
 
