@@ -1,6 +1,7 @@
 use crate::error::{Error, Result};
 use crate::test_suite::config::TestSuiteConfig;
-use crate::test_suite::{TestCase, TestCaseState, TestSuite};
+use crate::test_suite::status::TestCaseStatus;
+use crate::test_suite::{TestCase, TestSuite};
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -22,7 +23,7 @@ pub trait TestDriver {
         test_suite_dir: &Path,
         target: &str,
         test_case: &TestCase,
-    ) -> Result<TestCaseState>;
+    ) -> Result<TestCaseStatus>;
 
     fn test_file_pattern_or_default(&self, test_suite_config: &TestSuiteConfig) -> Vec<String> {
         if test_suite_config.test_file_pattern.is_empty() {

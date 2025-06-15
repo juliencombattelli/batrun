@@ -1,7 +1,8 @@
 use crate::error::{self, Error, Result};
 use crate::test_driver::TestDriver;
 use crate::test_suite::config::TestSuiteConfig;
-use crate::test_suite::{TestCase, TestCaseState, TestFile, TestSuite, TestSuiteFixture};
+use crate::test_suite::status::TestCaseStatus;
+use crate::test_suite::{TestCase, TestFile, TestSuite, TestSuiteFixture};
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -140,13 +141,12 @@ impl TestDriver for BashTestDriver {
         _test_suite_dir: &Path,
         target: &str,
         test_case: &TestCase,
-    ) -> Result<TestCaseState> {
-        // test_case.
+    ) -> Result<TestCaseStatus> {
         println!(
             "Running test case `{}` for target `{}`",
             test_case.id(),
             target
         );
-        Ok(TestCaseState::Passed)
+        Ok(TestCaseStatus::Passed)
     }
 }

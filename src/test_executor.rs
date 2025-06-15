@@ -5,8 +5,9 @@ pub mod sequential;
 pub mod utils; // TODO make private as executor utilities shall only be used by executor implementations
 
 use crate::test_driver::TestDriver;
+use crate::test_suite::status::{TestCaseStatus, TestSuiteStatus};
 use crate::test_suite::visitor::Visitor;
-use crate::test_suite::{TestCase, TestCaseState, TestSuite};
+use crate::test_suite::{TestCase, TestSuite};
 use crate::time::TimeInterval;
 
 use std::collections::HashMap;
@@ -19,47 +20,29 @@ pub trait Executor {
     );
 }
 
-#[derive(Clone, Debug)]
-pub struct Statistics {
-    passed: usize,
-    failed: usize,
-    skipped: usize,
-    not_executed: usize,
-}
-#[derive(Debug)]
-struct AbortReason(String);
-
-#[derive(Debug)]
-enum TestSuiteState {
-    NotRun,
-    Running,
-    Aborted(AbortReason),
-    Finished(Statistics),
-}
-
 #[derive(Debug)]
 struct TestCaseExecInfo {
-    state: TestCaseState,
+    status: TestCaseStatus,
     duration: TimeInterval,
 }
 impl TestCaseExecInfo {
     fn new() -> Self {
         Self {
-            state: TestCaseState::NotRun,
+            status: TestCaseStatus::NotRun,
             duration: TimeInterval::new(),
         }
     }
-    pub fn set_status(&mut self, state: TestCaseState) {
-        match state {
-            TestCaseState::NotRun => {
+    pub fn set_status(&mut self, status: TestCaseStatus) {
+        match status {
+            TestCaseStatus::NotRun => {
                 panic!("Test case status cannot be reset")
             }
-            TestCaseState::Running => {
-                self.state = state;
+            TestCaseStatus::Running => {
+                self.status = status;
                 self.duration = TimeInterval::new();
             }
             _ => {
-                self.state = state;
+                self.status = status;
                 self.duration.stop();
             }
         }
@@ -70,7 +53,7 @@ impl TestCaseExecInfo {
 pub struct ExecutionContext<'ts> {
     test_suite: &'ts TestSuite,
     target: String,
-    state: TestSuiteState,
+    status: TestSuiteStatus,
     exec_info: HashMap<TestCase, TestCaseExecInfo>,
 }
 
@@ -83,7 +66,7 @@ impl<'ts> ExecutionContext<'ts> {
         Self {
             test_suite,
             target,
-            state: TestSuiteState::NotRun,
+            status: TestSuiteStatus::NotRun,
             exec_info,
         }
     }

@@ -1,5 +1,6 @@
 pub mod config;
 pub mod registry;
+pub mod status;
 pub mod visitor;
 
 use self::config::TestSuiteConfig;
@@ -125,14 +126,4 @@ impl TestCase {
     pub fn id(&self) -> String {
         format!("{}::{}", self.path.display(), &self.name)
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TestCaseState {
-    NotRun,
-    Running,
-    Failed,
-    Passed,
-    Skipped(String),
-    DryRun,
 }
