@@ -2,8 +2,6 @@ pub mod parallel;
 pub mod round_robin;
 pub mod sequential;
 
-mod utils;
-
 use crate::test_driver::TestDriver;
 use crate::test_suite::status::{TestCaseStatus, TestSuiteStatus};
 use crate::test_suite::visitor::{ShouldSkip, Visitor};
