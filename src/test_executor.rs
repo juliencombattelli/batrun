@@ -13,11 +13,7 @@ use crate::time::TimeInterval;
 use std::collections::HashMap;
 
 pub trait Executor {
-    fn execute(
-        &self,
-        execution_contexts: &[ExecutionContext],
-        test_driver: &Box<(dyn TestDriver + 'static)>,
-    );
+    fn execute(&self, execution_contexts: &[ExecutionContext]);
 }
 
 #[derive(Debug)]
@@ -49,22 +45,27 @@ impl TestCaseExecInfo {
     }
 }
 
-#[derive(Debug)]
-pub struct ExecutionContext<'ts> {
-    test_suite: &'ts TestSuite,
+pub struct ExecutionContext<'tr> {
+    test_suite: &'tr TestSuite,
+    test_driver: &'tr Box<(dyn TestDriver + 'static)>,
     target: String,
     status: TestSuiteStatus,
     exec_info: HashMap<TestCase, TestCaseExecInfo>,
 }
 
-impl<'ts> ExecutionContext<'ts> {
-    pub fn new(test_suite: &'ts TestSuite, target: String) -> Self {
+impl<'tr> ExecutionContext<'tr> {
+    pub fn new(
+        test_suite: &'tr TestSuite,
+        test_driver: &'tr Box<(dyn TestDriver + 'static)>,
+        target: String,
+    ) -> Self {
         let mut exec_info = HashMap::<TestCase, TestCaseExecInfo>::new();
         Visitor::new(&test_suite).visit_all_ok(|tc, _| {
             exec_info.insert(tc.clone(), TestCaseExecInfo::new());
         });
         Self {
             test_suite,
+            test_driver,
             target,
             status: TestSuiteStatus::NotRun,
             exec_info,

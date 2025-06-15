@@ -62,10 +62,10 @@ impl TestRunner {
             .settings
             .targets
             .iter()
-            .map(|target| ExecutionContext::new(&test_suite, target.clone()))
+            .map(|target| ExecutionContext::new(&test_suite, test_driver, target.clone()))
             .collect::<Vec<_>>();
 
-        executor.execute(&execution_contexts, test_driver);
+        executor.execute(&execution_contexts);
 
         Ok(())
     }
