@@ -81,7 +81,7 @@ impl<'tr> ExecutionContext {
         tc_exec_info.duration.stop();
         match result {
             Ok(status) => tc_exec_info.set_status(status),
-            _ => tc_exec_info.set_status(TestCaseStatus::Failed), // TODO what to do is the returned error?
+            _ => tc_exec_info.set_status(TestCaseStatus::Failed), // TODO what to do with the returned error?
         }
     }
 

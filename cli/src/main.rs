@@ -98,35 +98,22 @@ fn main_impl() -> Result<()> {
     let cli = Cli::parse();
     let mut test_runner = TestRunner::new(Settings::from(&cli))?;
 
-    // let mut runner_actions = Vec::new();
-    // if cli.list_targets {
-    //     runner_actions.push(TestRunner::list_targets);
-    // }
-    // if cli.list_tests {
-    //     runner_actions.push(TestRunner::list_tests);
-    // }
-    // if runner_actions.is_empty() {
-    //     runner_actions.push(TestRunner::run_tests);
-    // }
-
     let start = Instant::now();
     {
         for test_suite_dir in test_runner.settings().test_suite_dirs.clone() {
+            let mut run_tests = true;
+            if cli.list_targets {
+                run_tests = false;
+                test_runner.list_targets(&test_suite_dir)?
+            }
             if cli.list_tests {
+                run_tests = false;
                 test_runner.list_tests(&test_suite_dir)?
-            } else {
+            }
+            if run_tests {
                 test_runner.run_tests(&test_suite_dir)?
             }
         }
-
-        // for test_suite_dir in test_runner.settings().test_suite_dirs.clone() {
-        //     test_runner.add_test_suite(test_suite_dir.clone());
-        //     println!("Test suite directory: {:?}", test_suite_dir);
-
-        //     if let Some(test_suite) = test_runner.test_suites().get(&test_suite_dir) {
-        //         println!("Test suite config: {:?}", test_suite.config());
-        //     }
-        // }
     }
     let duration = start.elapsed();
     println!("Time elapsed: {}", format_duration(duration));

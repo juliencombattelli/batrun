@@ -24,7 +24,7 @@ pub trait Reporter {
     #[track_caller]
     fn error_from(&self, error: &Error);
 
-    fn report_target_list(&self, targets: &Vec<String>);
+    fn report_target_list(&self, test_suite: &TestSuite);
     fn report_test_list(&self, test_suite: &TestSuite);
     fn report_test_suite_time(&self);
     fn report_total_time(&self);

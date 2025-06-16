@@ -92,7 +92,7 @@ impl BashTestDriver {
 }
 
 impl TestDriver for BashTestDriver {
-    fn test_file_pattern(&self) -> Vec<String> {
+    fn test_file_patterns_default(&self) -> Vec<String> {
         vec!["*.sh".to_string(), "*.bash".to_string()]
     }
 

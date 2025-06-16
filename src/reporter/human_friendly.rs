@@ -43,7 +43,20 @@ impl HumanFriendlyReporter {
 }
 
 impl Reporter for HumanFriendlyReporter {
-    fn report_target_list(&self, targets: &Vec<String>) {}
+    fn report_target_list(&self, test_suite: &TestSuite) {
+        println!(
+            "{}",
+            format!(
+                "Targets supported by test suite `{}`",
+                test_suite.path().display()
+            )
+            .bright_white()
+        );
+        for target in &test_suite.config().targets {
+            println!("  {}", target.white());
+        }
+        println!("");
+    }
 
     fn report_test_list(&self, test_suite: &TestSuite) {
         println!(

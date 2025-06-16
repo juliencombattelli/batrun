@@ -12,13 +12,11 @@ use crate::test_suite::registry::TestSuiteRegistry;
 
 use std::fs;
 use std::path::Path;
-use std::time::Instant;
 
 pub struct TestRunner {
     settings: Settings,
     test_drivers: TestDriverRegistry,
     test_suites: TestSuiteRegistry,
-    duration: Instant,
     console_reporter: HumanFriendlyReporter,
 }
 
@@ -29,7 +27,6 @@ impl TestRunner {
             settings,
             test_drivers: TestDriverRegistry::new(),
             test_suites: TestSuiteRegistry::new(),
-            duration: Instant::now(),
             console_reporter: HumanFriendlyReporter::new(debug_enabled),
         };
         test_runner.load_test_suites()?;
@@ -43,7 +40,8 @@ impl TestRunner {
     }
 
     pub fn list_targets(&self, test_suite_dir: &Path) -> Result<()> {
-        // TODO list_targets
+        let test_suite = self.test_suites.get(test_suite_dir)?;
+        self.console_reporter.report_target_list(test_suite);
         Ok(())
     }
 

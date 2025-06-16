@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 pub trait TestDriver {
-    fn test_file_pattern(&self) -> Vec<String>;
+    fn test_file_patterns_default(&self) -> Vec<String>;
 
     /// Walk through all files in the test suite and return a list of test cases found
     /// The list must be sorted by files and by execution order within a file (setup,
@@ -26,10 +26,10 @@ pub trait TestDriver {
     ) -> Result<TestCaseStatus>;
 
     fn test_file_pattern_or_default(&self, test_suite_config: &TestSuiteConfig) -> Vec<String> {
-        if test_suite_config.test_file_pattern.is_empty() {
-            self.test_file_pattern()
+        if test_suite_config.test_file_patterns.is_empty() {
+            self.test_file_patterns_default()
         } else {
-            test_suite_config.test_file_pattern.clone()
+            test_suite_config.test_file_patterns.clone()
         }
     }
 

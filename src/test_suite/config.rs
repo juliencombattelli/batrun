@@ -12,10 +12,11 @@ pub struct TestSuiteConfig {
     pub description: String,
     pub version: String,
     pub driver: String,
-    #[serde(rename = "test-file-pattern", default)]
-    pub test_file_pattern: Vec<String>,
+    #[serde(rename = "test-file-patterns", default)]
+    pub test_file_patterns: Vec<String>,
     #[serde(rename = "global-fixture")]
     pub global_fixture: Option<String>,
+    pub targets: Vec<String>,
 }
 
 impl TestSuiteConfig {
