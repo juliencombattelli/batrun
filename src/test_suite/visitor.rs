@@ -15,8 +15,7 @@ pub struct Visitor<'ts> {
     state: State,
     test_file_iter: std::iter::Peekable<std::slice::Iter<'ts, TestFile>>,
     test_case_iter: std::slice::Iter<'ts, TestCase>,
-    should_skip_suite: ShouldSkip,
-    should_skip_current_file: ShouldSkip,
+    should_skip: ShouldSkip,
 }
 
 impl<'ts> Visitor<'ts> {
@@ -26,8 +25,7 @@ impl<'ts> Visitor<'ts> {
             state: State::TestSuiteSetup,
             test_file_iter: std::slice::Iter::default().peekable(),
             test_case_iter: std::slice::Iter::default(),
-            should_skip_suite: ShouldSkip::No,
-            should_skip_current_file: ShouldSkip::No,
+            should_skip: ShouldSkip::No,
         }
     }
 
@@ -83,8 +81,9 @@ impl<'ts> Visitor<'ts> {
     fn visit_test_suite_setup<E>(&mut self, mut f: impl VisitorFnMut<E>) -> (State, Result<(), E>) {
         let mut result = Ok(());
         if let Some(tc) = &self.test_suite.fixture.setup_test_case {
-            if let Err(e) = f(tc, self.should_skip_suite) {
-                self.should_skip_suite = ShouldSkip::Yes;
+            if let Err(e) = f(tc, self.should_skip) {
+                self.should_skip
+                    .skip_with_reason(SkipReason::TestSuiteSetupError);
                 result = Err(e);
             }
         }
@@ -93,12 +92,18 @@ impl<'ts> Visitor<'ts> {
     }
 
     fn visit_test_case_setup<E>(&mut self, mut f: impl VisitorFnMut<E>) -> (State, Result<(), E>) {
+        // Reset the should_skip status if the stored advise was to skip the test cases from the
+        // previous test file due to setup failure
+        if let ShouldSkip::Yes(SkipReason::TestCaseSetupError) = self.should_skip {
+            self.should_skip = ShouldSkip::No;
+        }
         let mut result = Ok(());
         if let Some(test_file) = self.test_file_iter.peek() {
             self.test_case_iter = test_file.test_cases.iter();
             if let Some(tc) = &test_file.setup_test_case {
-                if let Err(e) = f(tc, self.should_skip_suite) {
-                    self.should_skip_current_file = ShouldSkip::Yes;
+                if let Err(e) = f(tc, self.should_skip) {
+                    self.should_skip
+                        .skip_with_reason(SkipReason::TestCaseSetupError);
                     result = Err(e);
                 }
             }
@@ -108,10 +113,7 @@ impl<'ts> Visitor<'ts> {
 
     fn visit_test_case<E>(&mut self, mut f: impl VisitorFnMut<E>) -> (State, Result<(), E>) {
         if let Some(test_case) = self.test_case_iter.next() {
-            let result = f(
-                test_case,
-                self.should_skip_suite.or(self.should_skip_current_file),
-            );
+            let result = f(test_case, self.should_skip);
             (State::TestCase, result)
         } else {
             (State::TestCaseTeardown, Ok(()))
@@ -126,7 +128,7 @@ impl<'ts> Visitor<'ts> {
             self.test_case_iter = test_file.test_cases.iter();
             let mut result = Ok(());
             if let Some(tc) = &test_file.teardown_test_case {
-                result = f(tc, self.should_skip_suite.or(self.should_skip_current_file));
+                result = f(tc, self.should_skip);
             }
             (State::TestCaseSetup, result)
         } else {
@@ -140,7 +142,7 @@ impl<'ts> Visitor<'ts> {
     ) -> (State, Result<(), E>) {
         let mut result = Ok(());
         if let Some(tc) = &self.test_suite.fixture.teardown_test_case {
-            result = f(tc, self.should_skip_suite);
+            result = f(tc, self.should_skip);
         }
         (State::Done, result)
     }
@@ -170,17 +172,24 @@ pub enum State {
     Aborted,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SkipReason {
+    TestCaseSetupError,
+    TestSuiteSetupError,
+}
+
 /// A boolean indicating if the current test case should be skipped
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ShouldSkip {
     No,
-    Yes,
+    Yes(SkipReason),
 }
 impl ShouldSkip {
-    fn or(self, other: ShouldSkip) -> ShouldSkip {
-        match (self, other) {
-            (ShouldSkip::No, ShouldSkip::No) => ShouldSkip::No,
-            _ => ShouldSkip::Yes,
-        }
+    fn skip_with_reason(&mut self, reason: SkipReason) {
+        *self = match self {
+            ShouldSkip::No => ShouldSkip::Yes(reason),
+            // SkipReason variants are sorted from the least priority to the highest one
+            ShouldSkip::Yes(self_reason) => ShouldSkip::Yes(std::cmp::max(*self_reason, reason)),
+        };
     }
 }

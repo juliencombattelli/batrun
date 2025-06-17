@@ -1,3 +1,5 @@
+use crate::test_suite::visitor::SkipReason;
+
 #[derive(Debug)]
 pub struct Statistics {
     passed: usize,
@@ -6,13 +8,18 @@ pub struct Statistics {
 }
 
 #[derive(Debug)]
-pub struct Reason(String);
+pub struct AbortReason(pub String);
+impl AbortReason {
+    pub fn new(reason: &str) -> Self {
+        Self(String::from(reason))
+    }
+}
 
 #[derive(Debug)]
 pub enum TestSuiteStatus {
     NotRun,
     Running(Statistics),
-    Aborted(Statistics, Reason),
+    Aborted(Statistics, AbortReason),
     Finished(Statistics),
 }
 
@@ -22,6 +29,6 @@ pub enum TestCaseStatus {
     Running,
     Failed,
     Passed,
-    Skipped(Reason),
+    Skipped(SkipReason),
     DryRun,
 }

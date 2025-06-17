@@ -54,7 +54,9 @@ impl TestRunner {
             .settings
             .targets
             .iter()
-            .map(|target| ExecutionContext::new(&test_suite, target.clone()))
+            .map(|target| {
+                ExecutionContext::new(&test_suite, target.clone(), &self.settings.out_dir)
+            })
             .collect::<Vec<_>>();
 
         let executor: Box<dyn Executor> = match self.settings.exec_strategy {

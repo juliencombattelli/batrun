@@ -89,6 +89,52 @@ impl BashTestDriver {
                 })
             })
     }
+
+    fn run_test_function_from_file(
+        &self,
+        test_suite_dir: &Path,
+        test_suite_config: &TestSuiteConfig,
+        file_path: &Path,
+        fn_name: &str,
+        target: &str,
+        out_dir: &Path,
+        log_file: &Path,
+    ) -> Result<TestCaseStatus> {
+        let mut run_function_command = Command::new("bash");
+        let mut bash_command = String::new();
+
+        if let Some(global_fixture) = &test_suite_config.global_fixture {
+            let mut global_fixture_file = test_suite_dir.to_path_buf();
+            global_fixture_file.push(global_fixture);
+            bash_command += &format!("source '{}'; ", global_fixture_file.display());
+        }
+
+        let mut file_full_path = test_suite_dir.to_path_buf();
+        file_full_path.push(file_path);
+        bash_command += &format!("source '{}'; ", file_full_path.display());
+
+        // TODO redirect into log_file using Rust facilities?
+        bash_command += &format!(
+            "\"{fn_name}\" \"{target}\" \"{out_dir}\" &> \"{log_file}\"",
+            out_dir = out_dir.display(),
+            log_file = log_file.display()
+        );
+
+        // TODO redirect also stderr in case of runner failure
+        let output = run_function_command
+            .args(["-x", "-c", &format!("{}", &bash_command)])
+            .output()
+            .map_err(|io_err| error::kind::TestDriverIo {
+                filename: PathBuf::from(run_function_command.get_program()),
+                source: io_err,
+            })?;
+
+        if output.status.success() {
+            Ok(TestCaseStatus::Passed)
+        } else {
+            Ok(TestCaseStatus::Failed)
+        }
+    }
 }
 
 impl TestDriver for BashTestDriver {
@@ -138,15 +184,27 @@ impl TestDriver for BashTestDriver {
 
     fn run_test(
         &self,
-        _test_suite_dir: &Path,
+        test_suite_dir: &Path,
+        test_suite_config: &TestSuiteConfig,
         target: &str,
         test_case: &TestCase,
+        test_case_out_dir: &Path,
     ) -> Result<TestCaseStatus> {
-        println!(
-            "Running test case `{}` for target `{}`",
-            test_case.id(),
-            target
+        let log_file_name = format!("{}.log", test_case.name());
+
+        let mut log_file_path = test_case_out_dir.to_path_buf();
+        log_file_path.push(log_file_name);
+
+        let status = self.run_test_function_from_file(
+            test_suite_dir,
+            test_suite_config,
+            test_case.path(),
+            test_case.name(),
+            target,
+            test_case_out_dir,
+            &log_file_path,
         );
-        Ok(TestCaseStatus::Passed)
+
+        status
     }
 }

@@ -15,8 +15,9 @@ impl<'tr> Executor<'tr> for SequentialExecutor {
         for exec_context in execution_contexts {
             let mut visitor = Visitor::new(&test_suite);
             loop {
-                let done = visitor.visit_next_ok(|test_case, should_skip| {
-                    exec_context.run(test_driver, test_suite, test_case, should_skip);
+                // Ignore result as it is internally used by the visitor to know whether test cases should be skipped
+                let (done, _result) = visitor.visit_next(|test_case, should_skip| {
+                    exec_context.run(test_driver, test_suite, test_case, should_skip)
                 });
                 if done {
                     break;

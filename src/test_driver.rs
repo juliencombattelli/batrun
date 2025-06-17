@@ -21,8 +21,10 @@ pub trait TestDriver {
     fn run_test(
         &self,
         test_suite_dir: &Path,
+        test_suite_config: &TestSuiteConfig,
         target: &str,
         test_case: &TestCase,
+        test_case_out_dir: &Path,
     ) -> Result<TestCaseStatus>;
 
     fn test_file_pattern_or_default(&self, test_suite_config: &TestSuiteConfig) -> Vec<String> {
