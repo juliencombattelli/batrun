@@ -6,7 +6,8 @@
     "test-file-pattern": ["*.sh"],
     "global-fixture": "tests.sh",
     "targets": [
-        "test",
-        "other"
+        "foo",
+        "bar",
+        "baz"
     ]
 }

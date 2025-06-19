@@ -1,13 +1,9 @@
 #!/bin/bash
 
-declare -ra KNOWN_DEVICES=(
-    test
-    other
-)
-
 declare -rA KNOWN_DEVICES_IP=(
-    [test]="192.168.1.1"
-    [other]="192.168.1.2"
+    [foo]="192.168.1.1"
+    [bar]="192.168.1.2"
+    [baz]="192.168.1.3"
 )
 
 # If the provided device is part of the KNOWN_DEVICES_IP then use the corresponding IP
@@ -22,12 +18,9 @@ function resolve_device_ip {
 }
 
 function setup {
-    local -r DECLARE_DEVICE="$1"
-    eval "$DECLARE_DEVICE"
+    local -r DEVICE="$1"
     local -r OUT_DIR="$2"
-    for DEVICE in "${DEVICES[@]}"; do
-        echo "Connecting to $DEVICE @ $(resolve_device_ip $DEVICE)..."
-    done
+    echo "Connecting to $DEVICE @ $(resolve_device_ip $DEVICE)..."
     return 0
 }
 
