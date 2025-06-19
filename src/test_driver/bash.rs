@@ -130,7 +130,15 @@ impl BashTestDriver {
 
         // TODO redirect also stderr in case of runner failure
         let output = run_function_command
-            .args(["-x", "-c", &format!("{}", &bash_command)])
+            .args([
+                "-x",
+                "-c",
+                "-e",
+                "-u",
+                "-o",
+                "pipefail",
+                &format!("{}", &bash_command),
+            ])
             .output()
             .map_err(|io_err| error::kind::TestDriverIo {
                 filename: PathBuf::from(run_function_command.get_program()),
