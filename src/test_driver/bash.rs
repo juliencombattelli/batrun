@@ -103,14 +103,23 @@ impl BashTestDriver {
         let mut run_function_command = Command::new("bash");
         let mut bash_command = String::new();
 
+        let file_path = test_suite_dir.join(file_path);
+
         if let Some(global_fixture) = &test_suite_config.global_fixture {
-            bash_command += &format!(
-                "source '{}'; ",
-                test_suite_dir.join(global_fixture).display()
-            );
+            let global_fixture = test_suite_dir.join(global_fixture);
+            // Do not source the fixture if we are executing a function from the fixture
+            if global_fixture != file_path {
+                bash_command += &format!(
+                    "echo Sourcing global fixture '{0}'; source '{0}'; ",
+                    global_fixture.display()
+                );
+            }
         }
 
-        bash_command += &format!("source '{}'; ", test_suite_dir.join(file_path).display());
+        bash_command += &format!(
+            "echo Sourcing test file '{0}'; source '{0}'; ",
+            file_path.display()
+        );
 
         // TODO redirect into log_file using Rust facilities?
         bash_command += &format!(
