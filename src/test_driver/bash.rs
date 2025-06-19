@@ -104,14 +104,13 @@ impl BashTestDriver {
         let mut bash_command = String::new();
 
         if let Some(global_fixture) = &test_suite_config.global_fixture {
-            let mut global_fixture_file = test_suite_dir.to_path_buf();
-            global_fixture_file.push(global_fixture);
-            bash_command += &format!("source '{}'; ", global_fixture_file.display());
+            bash_command += &format!(
+                "source '{}'; ",
+                test_suite_dir.join(global_fixture).display()
+            );
         }
 
-        let mut file_full_path = test_suite_dir.to_path_buf();
-        file_full_path.push(file_path);
-        bash_command += &format!("source '{}'; ", file_full_path.display());
+        bash_command += &format!("source '{}'; ", test_suite_dir.join(file_path).display());
 
         // TODO redirect into log_file using Rust facilities?
         bash_command += &format!(
@@ -190,21 +189,14 @@ impl TestDriver for BashTestDriver {
         test_case: &TestCase,
         test_case_out_dir: &Path,
     ) -> Result<TestCaseStatus> {
-        let log_file_name = format!("{}.log", test_case.name());
-
-        let mut log_file_path = test_case_out_dir.to_path_buf();
-        log_file_path.push(log_file_name);
-
-        let status = self.run_test_function_from_file(
+        self.run_test_function_from_file(
             test_suite_dir,
             test_suite_config,
             test_case.path(),
             test_case.name(),
             target,
             test_case_out_dir,
-            &log_file_path,
-        );
-
-        status
+            &test_case_out_dir.join(format!("{}.log", test_case.name())),
+        )
     }
 }
