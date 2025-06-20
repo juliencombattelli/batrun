@@ -43,6 +43,7 @@ impl<'ts> Visitor<'ts> {
                 (termination_state, Ok(()))
             }
         };
+        // println!("VISITOR TRANSITION: {:?} -> {:?}", self.state, next_state);
         self.state = next_state;
         (done, result)
     }
@@ -125,7 +126,8 @@ impl<'ts> Visitor<'ts> {
         mut f: impl VisitorFnMut<E>,
     ) -> (State, Result<(), E>) {
         if let Some(test_file) = self.test_file_iter.next() {
-            self.test_case_iter = test_file.test_cases.iter();
+            // println!("DEBUG next test_file {test_file:?}");
+            // self.test_case_iter = test_file.test_cases.iter();
             let mut result = Ok(());
             if let Some(tc) = &test_file.teardown_test_case {
                 result = f(tc, self.should_skip);
@@ -161,7 +163,7 @@ impl<'ts> Visitor<'ts> {
 ///                                                                                             │ <All> │───>│ Aborted │    ///
 ///                                                                                             │       │    │         │    ///
 ///                                                                                             └───────┘    └─────────┘    ///
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum State {
     TestSuiteSetup,
     TestCaseSetup,
