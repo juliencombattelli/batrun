@@ -1,0 +1,13 @@
+{
+    "name": "batrun-ivts-setup-failed",
+    "description": "Internal test suite validating batrun core features when the setup fixture fails",
+    "version": "0.1",
+    "driver": "bash",
+    "test-file-pattern": ["*.sh"],
+    "global-fixture": "fixture.sh",
+    "targets": [
+        "foo",
+        "bar",
+        "baz"
+    ]
+}

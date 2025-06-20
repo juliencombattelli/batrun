@@ -1,10 +1,10 @@
 {
-    "name": "batrun-internal-validation-suite",
-    "description": "Test suite to validate batrun",
+    "name": "batrun-ivts",
+    "description": "Internal test suite validating batrun core features",
     "version": "0.1",
     "driver": "bash",
     "test-file-pattern": ["*.sh"],
-    "global-fixture": "tests.sh",
+    "global-fixture": "fixture.sh",
     "targets": [
         "foo",
         "bar",
