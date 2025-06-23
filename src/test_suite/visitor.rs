@@ -125,7 +125,6 @@ impl<'ts> Visitor<'ts> {
         mut f: impl VisitorFnMut<E>,
     ) -> (State, Result<(), E>) {
         if let Some(test_file) = self.test_file_iter.next() {
-            self.test_case_iter = test_file.test_cases.iter();
             let mut result = Ok(());
             if let Some(tc) = &test_file.teardown_test_case {
                 result = f(tc, self.should_skip);
