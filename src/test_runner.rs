@@ -17,7 +17,7 @@ pub struct TestRunner {
     settings: Settings,
     test_drivers: TestDriverRegistry,
     test_suites: TestSuiteRegistry,
-    console_reporter: HumanFriendlyReporter,
+    console_reporter: Box<dyn Reporter>,
 }
 
 impl TestRunner {
@@ -27,7 +27,7 @@ impl TestRunner {
             settings,
             test_drivers: TestDriverRegistry::new(),
             test_suites: TestSuiteRegistry::new(),
-            console_reporter: HumanFriendlyReporter::new(debug_enabled),
+            console_reporter: Box::new(HumanFriendlyReporter::new(debug_enabled)),
         };
         test_runner.load_test_suites()?;
         Ok(test_runner)
@@ -64,7 +64,12 @@ impl TestRunner {
             ExecutionStrategy::Sequential => Box::new(SequentialExecutor {}),
             _ => todo!("{:X?}", self.settings.exec_strategy),
         };
-        executor.execute(&test_driver, &test_suite, &mut execution_contexts);
+        executor.execute(
+            &self.console_reporter,
+            &test_driver,
+            &test_suite,
+            &mut execution_contexts,
+        );
 
         Ok(())
     }

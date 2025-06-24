@@ -1,5 +1,6 @@
 use crate::error::Error;
-use crate::test_suite::TestSuite;
+use crate::test_executor::TestCaseExecInfo;
+use crate::test_suite::{TestCase, TestSuite};
 
 pub trait Reporter {
     #[track_caller]
@@ -28,6 +29,19 @@ pub trait Reporter {
     fn report_test_list(&self, test_suite: &TestSuite);
     fn report_test_suite_time(&self);
     fn report_total_time(&self);
+    fn report_test_case_execution_started(
+        &self,
+        _test_case: &TestCase,
+        _target: &str,
+        _exec_info: &TestCaseExecInfo,
+    ) {
+    }
+    fn report_test_case_execution_result(
+        &self,
+        test_case: &TestCase,
+        target: &str,
+        exec_info: &TestCaseExecInfo,
+    );
 }
 
 pub mod human_friendly;

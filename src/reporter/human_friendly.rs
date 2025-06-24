@@ -1,7 +1,9 @@
 use crate::error::Error;
 use crate::reporter::Reporter;
-use crate::test_suite::TestSuite;
+use crate::test_executor::TestCaseExecInfo;
+use crate::test_suite::status::TestCaseStatus;
 use crate::test_suite::visitor::Visitor;
+use crate::test_suite::{TestCase, TestSuite};
 
 use colored::{ColoredString, Colorize};
 
@@ -98,5 +100,38 @@ impl Reporter for HumanFriendlyReporter {
             _ => (&error.to_string(), ""),
         };
         self.error_detailed(&message, &details);
+    }
+
+    fn report_test_case_execution_started(
+        &self,
+        test_case: &TestCase,
+        target: &str,
+        _exec_info: &TestCaseExecInfo,
+    ) {
+        print!(
+            "Running test case `{}` for target `{}`",
+            test_case.id(),
+            &target
+        );
+    }
+    fn report_test_case_execution_result(
+        &self,
+        _test_case: &TestCase,
+        _target: &str,
+        exec_info: &TestCaseExecInfo,
+    ) {
+        println!(
+            " {}",
+            match exec_info.result() {
+                Err(_) => "RUNNER_FAILED".red().to_string(),
+                Ok(TestCaseStatus::Failed) => "FAILED".red().to_string(),
+                Ok(TestCaseStatus::Passed) => "PASSED".green().to_string(),
+                Ok(TestCaseStatus::Skipped(reason)) =>
+                    format!("{} (reason: {:?})", "SKIPPED".dimmed(), reason),
+                Ok(TestCaseStatus::DryRun) => "DRYRUN".dimmed().to_string(),
+                Ok(TestCaseStatus::NotRun) => "NOTRUN".dimmed().to_string(),
+                Ok(TestCaseStatus::Running) => "RUNNING".dimmed().to_string(),
+            }
+        );
     }
 }

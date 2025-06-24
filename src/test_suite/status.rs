@@ -23,7 +23,7 @@ pub enum TestSuiteStatus {
     Finished(Statistics),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum TestCaseStatus {
     NotRun,
     Running,

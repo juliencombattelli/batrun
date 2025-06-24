@@ -1,3 +1,4 @@
+use crate::reporter::Reporter;
 use crate::test_driver::TestDriver;
 use crate::test_executor::{ExecutionContext, Executor};
 use crate::test_suite::TestSuite;
@@ -10,6 +11,7 @@ pub struct RoundRobinExecutor;
 impl<'tr> Executor<'tr> for RoundRobinExecutor {
     fn execute(
         &self,
+        reporter: &'tr Box<dyn Reporter>,
         test_driver: &'tr Box<(dyn TestDriver + 'static)>,
         test_suite: &'tr TestSuite,
         execution_contexts: &'tr mut [ExecutionContext],
@@ -33,7 +35,7 @@ impl<'tr> Executor<'tr> for RoundRobinExecutor {
             let visitor = &mut context.visitor;
             // Ignore result as it is internally used by the visitor to know whether test cases should be skipped
             let (done, _result) = visitor.visit_next(|test_case, should_skip| {
-                exec_context.run(test_driver, test_suite, test_case, should_skip)
+                exec_context.run(reporter, test_driver, test_suite, test_case, should_skip)
             });
             if done {
                 contexts.pop_front();
