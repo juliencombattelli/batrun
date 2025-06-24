@@ -113,9 +113,9 @@ impl<'tr> ExecutionContext {
         // UNWRAP: exec_info is initialized with all test cases so the key is guaranteed to exist
         let tc_exec_info = self.exec_info.get_mut(test_case).unwrap();
 
+        tc_exec_info.set_result(Ok(TestCaseStatus::Running));
         reporter.report_test_case_execution_started(&test_case, &self.target, &tc_exec_info);
 
-        tc_exec_info.duration = TimeInterval::new();
         let result = {
             if let ShouldSkip::Yes(reason) = should_skip {
                 Ok(TestCaseStatus::Skipped(reason))
@@ -129,7 +129,6 @@ impl<'tr> ExecutionContext {
                 )
             }
         };
-        tc_exec_info.duration.stop();
 
         tc_exec_info.set_result(result);
         reporter.report_test_case_execution_result(&test_case, &self.target, &tc_exec_info);
