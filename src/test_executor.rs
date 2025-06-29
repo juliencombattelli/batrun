@@ -5,7 +5,7 @@ pub mod sequential;
 use crate::error::{self, Result};
 use crate::reporter::Reporter;
 use crate::test_driver::TestDriver;
-use crate::test_suite::status::{TestCaseStatus, TestSuiteStatus};
+use crate::test_suite::status::{Statistics, TestCaseStatus, TestSuiteStatus};
 use crate::test_suite::visitor::{ShouldSkip, Visitor};
 use crate::test_suite::{TestCase, TestSuite};
 use crate::time::TimeInterval;
@@ -19,7 +19,7 @@ pub trait Executor<'tr> {
         reporter: &'tr Box<dyn Reporter>,
         test_driver: &'tr Box<dyn TestDriver>,
         test_suite: &'tr TestSuite,
-        execution_contexts: &'tr mut [ExecutionContext],
+        exec_contexts: &'tr mut [ExecutionContext],
     );
 }
 
@@ -78,6 +78,14 @@ impl<'tr> ExecutionContext {
             status: TestSuiteStatus::NotRun,
             exec_info,
         }
+    }
+
+    pub fn target(&self) -> &str {
+        &self.target
+    }
+
+    pub fn status(&self) -> TestSuiteStatus {
+        self.status.clone()
     }
 
     pub fn prepare_test_case_out_dir(
@@ -141,5 +149,21 @@ impl<'tr> ExecutionContext {
 
     pub fn set_test_suite_status(&mut self, status: TestSuiteStatus) {
         self.status = status;
+    }
+
+    pub fn get_statistics(&self) -> Statistics {
+        let mut stats = Statistics::default();
+
+        for exec_info in self.exec_info.values() {
+            match exec_info.result {
+                Ok(TestCaseStatus::Passed) => stats.passed += 1,
+                Ok(TestCaseStatus::Failed) => stats.failed += 1,
+                Ok(TestCaseStatus::Skipped(_) | TestCaseStatus::DryRun) => stats.skipped += 1,
+                Err(_) => stats.runner_failed += 1,
+                _ => {}
+            }
+        }
+
+        stats
     }
 }

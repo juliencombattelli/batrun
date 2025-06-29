@@ -3,10 +3,11 @@ use crate::error::{self, Result};
 use crate::reporter::Reporter;
 use crate::reporter::human_friendly::HumanFriendlyReporter;
 use crate::settings::Settings;
-use crate::test_driver::TestDriverRegistry;
+use crate::test_driver::{TestDriver, TestDriverRegistry};
 use crate::test_executor::round_robin::RoundRobinExecutor;
 use crate::test_executor::sequential::SequentialExecutor;
 use crate::test_executor::{ExecutionContext, Executor};
+use crate::test_suite::TestSuite;
 use crate::test_suite::config::TestSuiteConfig;
 use crate::test_suite::registry::TestSuiteRegistry;
 
@@ -50,7 +51,7 @@ impl TestRunner {
         let test_suite = self.test_suites.get_mut(test_suite_dir)?;
         let test_driver = self.test_drivers.get(&test_suite.config().driver)?;
 
-        let mut execution_contexts = self
+        let mut exec_contexts = self
             .settings
             .targets
             .iter()
@@ -59,19 +60,35 @@ impl TestRunner {
             })
             .collect::<Vec<_>>();
 
-        let executor: Box<dyn Executor> = match self.settings.exec_strategy {
-            ExecutionStrategy::RoundRobin => Box::new(RoundRobinExecutor {}),
-            ExecutionStrategy::Sequential => Box::new(SequentialExecutor {}),
-            _ => todo!("{:X?}", self.settings.exec_strategy),
-        };
-        executor.execute(
-            &self.console_reporter,
+        Self::run_executor(
+            test_suite,
             &test_driver,
-            &test_suite,
-            &mut execution_contexts,
+            &self.console_reporter,
+            &mut exec_contexts,
+            self.settings.exec_strategy.clone(),
         );
 
+        for exec_context in &exec_contexts {
+            self.console_reporter
+                .report_test_suite_execution_summary(&test_suite, &exec_context);
+        }
+
         Ok(())
+    }
+
+    fn run_executor(
+        test_suite: &TestSuite,
+        test_driver: &Box<dyn TestDriver>,
+        reporter: &Box<dyn Reporter>,
+        exec_contexts: &mut [ExecutionContext],
+        exec_strategy: ExecutionStrategy,
+    ) {
+        let executor: Box<dyn Executor> = match exec_strategy {
+            ExecutionStrategy::RoundRobin => Box::new(RoundRobinExecutor {}),
+            ExecutionStrategy::Sequential => Box::new(SequentialExecutor {}),
+            _ => todo!("{:X?}", exec_strategy),
+        };
+        executor.execute(reporter, test_driver, test_suite, exec_contexts);
     }
 
     pub fn settings(&self) -> &Settings {

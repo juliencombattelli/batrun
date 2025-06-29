@@ -11,7 +11,7 @@ impl<'tr> Executor<'tr> for ParallelExecutor {
         _reporter: &'tr Box<dyn Reporter>,
         _test_driver: &'tr Box<(dyn TestDriver + 'static)>,
         _test_suite: &'tr TestSuite,
-        _execution_contexts: &mut [ExecutionContext],
+        _exec_contexts: &mut [ExecutionContext],
     ) {
         todo!()
     }

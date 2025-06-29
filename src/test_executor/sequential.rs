@@ -12,9 +12,9 @@ impl<'tr> Executor<'tr> for SequentialExecutor {
         reporter: &'tr Box<dyn Reporter>,
         test_driver: &'tr Box<(dyn TestDriver + 'static)>,
         test_suite: &'tr TestSuite,
-        execution_contexts: &'tr mut [ExecutionContext],
+        exec_contexts: &'tr mut [ExecutionContext],
     ) {
-        for exec_context in execution_contexts {
+        for exec_context in exec_contexts {
             let mut visitor = Visitor::new(&test_suite);
             loop {
                 // Ignore result as it is internally used by the visitor to know whether test cases should be skipped

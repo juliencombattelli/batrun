@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::reporter::Reporter;
-use crate::test_executor::TestCaseExecInfo;
+use crate::test_executor::{ExecutionContext, TestCaseExecInfo};
 use crate::test_suite::status::TestCaseStatus;
 use crate::test_suite::visitor::Visitor;
 use crate::test_suite::{TestCase, TestSuite};
@@ -76,6 +76,35 @@ impl Reporter for HumanFriendlyReporter {
     }
 
     fn report_test_suite_time(&self) {}
+
+    fn report_test_suite_execution_summary(
+        &self,
+        test_suite: &TestSuite,
+        exec_context: &ExecutionContext,
+    ) {
+        println!(
+            "{}",
+            format!(
+                "Test suite `{}` execution summary",
+                test_suite.path().display()
+            )
+            .bright_white()
+        );
+        println!("  Target: {}", exec_context.target().white());
+        println!(
+            "  Status: {}",
+            format!("{:?}", exec_context.status()).white()
+        );
+        let statistics = exec_context.get_statistics();
+        println!(
+            "  Statistics: {} passed, {} failed, {} runner failed, {} skipped",
+            statistics.passed.to_string().green(),
+            statistics.failed.to_string().red(),
+            statistics.runner_failed.to_string().red(),
+            statistics.skipped.to_string().dimmed(),
+        );
+        println!("");
+    }
 
     fn report_total_time(&self) {}
 

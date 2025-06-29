@@ -1,11 +1,12 @@
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct Statistics {
-    passed: usize,
-    failed: usize,
-    skipped: usize,
+    pub passed: usize,
+    pub failed: usize,
+    pub runner_failed: usize,
+    pub skipped: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AbortReason(pub String);
 impl AbortReason {
     pub fn new(reason: &str) -> Self {
@@ -13,7 +14,7 @@ impl AbortReason {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TestSuiteStatus {
     NotRun,
     Running(Statistics),
