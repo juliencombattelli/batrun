@@ -1,3 +1,4 @@
+use crate::test_suite::status::SkipReason;
 use crate::test_suite::{TestCase, TestFile, TestSuite};
 
 /// The trait used when the visitor visites a test case
@@ -81,7 +82,7 @@ impl<'ts> Visitor<'ts> {
     fn visit_test_suite_setup<E>(&mut self, mut f: impl VisitorFnMut<E>) -> (State, Result<(), E>) {
         let mut result = Ok(());
         if let Some(tc) = &self.test_suite.fixture.setup_test_case {
-            if let Err(e) = f(tc, self.should_skip) {
+            if let Err(e) = f(tc, self.should_skip.clone()) {
                 self.should_skip
                     .skip_with_reason(SkipReason::TestSuiteSetupError);
                 result = Err(e);
@@ -101,7 +102,7 @@ impl<'ts> Visitor<'ts> {
         if let Some(test_file) = self.test_file_iter.peek() {
             self.test_case_iter = test_file.test_cases.iter();
             if let Some(tc) = &test_file.setup_test_case {
-                if let Err(e) = f(tc, self.should_skip) {
+                if let Err(e) = f(tc, self.should_skip.clone()) {
                     self.should_skip
                         .skip_with_reason(SkipReason::TestCaseSetupError);
                     result = Err(e);
@@ -113,7 +114,7 @@ impl<'ts> Visitor<'ts> {
 
     fn visit_test_case<E>(&mut self, mut f: impl VisitorFnMut<E>) -> (State, Result<(), E>) {
         if let Some(test_case) = self.test_case_iter.next() {
-            let result = f(test_case, self.should_skip);
+            let result = f(test_case, self.should_skip.clone());
             (State::TestCase, result)
         } else {
             (State::TestCaseTeardown, Ok(()))
@@ -127,7 +128,7 @@ impl<'ts> Visitor<'ts> {
         if let Some(test_file) = self.test_file_iter.next() {
             let mut result = Ok(());
             if let Some(tc) = &test_file.teardown_test_case {
-                result = f(tc, self.should_skip);
+                result = f(tc, self.should_skip.clone());
             }
             (State::TestCaseSetup, result)
         } else {
@@ -141,7 +142,7 @@ impl<'ts> Visitor<'ts> {
     ) -> (State, Result<(), E>) {
         let mut result = Ok(());
         if let Some(tc) = &self.test_suite.fixture.teardown_test_case {
-            result = f(tc, self.should_skip);
+            result = f(tc, self.should_skip.clone());
         }
         (State::Done, result)
     }
@@ -171,14 +172,8 @@ pub enum State {
     Aborted,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SkipReason {
-    TestCaseSetupError,
-    TestSuiteSetupError,
-}
-
 /// A boolean indicating if the current test case should be skipped
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ShouldSkip {
     No,
     Yes(SkipReason),
@@ -188,7 +183,9 @@ impl ShouldSkip {
         *self = match self {
             ShouldSkip::No => ShouldSkip::Yes(reason),
             // SkipReason variants are sorted from the least priority to the highest one
-            ShouldSkip::Yes(self_reason) => ShouldSkip::Yes(std::cmp::max(*self_reason, reason)),
+            ShouldSkip::Yes(self_reason) => {
+                ShouldSkip::Yes(std::cmp::max(self_reason.clone(), reason))
+            }
         };
     }
 }

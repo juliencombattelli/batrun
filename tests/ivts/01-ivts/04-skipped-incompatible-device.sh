@@ -6,9 +6,7 @@ function setup {
 
 function test_skip {
     local -r DEVICE="$1"
-    if [ "$DEVICE" = "test" ]; then
-        return 255
-    fi
+    export BATRUN_SKIPPED="Invalid target"
     return 0
 }
 

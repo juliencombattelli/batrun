@@ -1,11 +1,12 @@
 use crate::error::{self, Error, Result};
 use crate::test_driver::TestDriver;
 use crate::test_suite::config::TestSuiteConfig;
-use crate::test_suite::status::TestCaseStatus;
+use crate::test_suite::status::{SkipReason, TestCaseStatus};
 use crate::test_suite::{TestCase, TestFile, TestSuite, TestSuiteFixture};
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 pub struct BashTestDriver;
 
@@ -100,52 +101,39 @@ impl BashTestDriver {
         out_dir: &Path,
         log_file: &Path,
     ) -> Result<TestCaseStatus> {
-        let mut run_function_command = Command::new("bash");
-        let mut bash_command = String::new();
+        let run_fn_command = RunFnCommandBuilder::new()
+            .source_fixture_if_necessary(
+                test_suite_config.global_fixture.clone(),
+                file_path,
+                test_suite_dir,
+            )
+            .source_test_file(&file_path)
+            .execute_fn(fn_name, target, out_dir)
+            .build();
 
-        let file_path = test_suite_dir.join(file_path);
-
-        if let Some(global_fixture) = &test_suite_config.global_fixture {
-            let global_fixture = test_suite_dir.join(global_fixture);
-            // Do not source the fixture if we are executing a function from the fixture
-            if global_fixture != file_path {
-                bash_command += &format!(
-                    "echo Sourcing global fixture '{0}'; source '{0}'; ",
-                    global_fixture.display()
-                );
-            }
-        }
-
-        bash_command += &format!(
-            "echo Sourcing test file '{0}'; source '{0}'; ",
-            file_path.display()
-        );
-
-        // TODO redirect into log_file using Rust facilities?
-        bash_command += &format!(
-            "\"{fn_name}\" \"{target}\" \"{out_dir}\" &> \"{log_file}\"",
-            out_dir = out_dir.display(),
-            log_file = log_file.display()
-        );
+        let mut bash_command = Command::new("bash");
+        bash_command
+            .args(["-x", "-e", "-u", "-o", "pipefail"])
+            .arg("-c")
+            .arg(&format!(
+                "{{ {run_fn_command} }} &> \"{log_file}\"; {{ env | grep -E '^BATRUN_' || true; }}",
+                log_file = log_file.display()
+            ));
 
         // TODO redirect also stderr in case of runner failure
-        let output = run_function_command
-            .args([
-                "-x",
-                "-c",
-                "-e",
-                "-u",
-                "-o",
-                "pipefail",
-                &format!("{}", &bash_command),
-            ])
-            .output()
-            .map_err(|io_err| error::kind::TestDriverIo {
-                filename: PathBuf::from(run_function_command.get_program()),
+        let command_output = BashCommandOutput::new(bash_command.output().map_err(|io_err| {
+            error::kind::TestDriverIo {
+                filename: PathBuf::from(bash_command.get_program()),
                 source: io_err,
-            })?;
+            }
+        })?);
 
-        if output.status.success() {
+        if command_output.output.status.success() {
+            if let Some(skipped_reason) = command_output.skipped {
+                return Ok(TestCaseStatus::Skipped(SkipReason::TestCaseSpecificReason(
+                    skipped_reason,
+                )));
+            }
             Ok(TestCaseStatus::Passed)
         } else {
             Ok(TestCaseStatus::Failed)
@@ -209,11 +197,97 @@ impl TestDriver for BashTestDriver {
         self.run_test_function_from_file(
             test_suite_dir,
             test_suite_config,
-            test_case.path(),
+            &test_suite_dir.join(test_case.path()),
             test_case.name(),
             target,
             test_case_out_dir,
             &test_case_out_dir.join(format!("{}.log", test_case.name())),
         )
+    }
+}
+
+struct RunFnCommandBuilder {
+    bash_command: String,
+}
+
+impl RunFnCommandBuilder {
+    fn new() -> Self {
+        Self {
+            bash_command: String::new(),
+        }
+    }
+
+    fn source_fixture(mut self, fixture: &Path) -> RunFnCommandBuilder {
+        self.bash_command += &format!(
+            "echo Sourcing global fixture '{0}'; source '{0}'; ",
+            fixture.display()
+        );
+        self
+    }
+
+    fn source_fixture_if_necessary(
+        self,
+        fixture: Option<String>,
+        file_path: &Path,
+        test_suite_dir: &Path,
+    ) -> RunFnCommandBuilder {
+        if let Some(fixture) = &fixture {
+            let fixture = test_suite_dir.join(fixture);
+            // Do not source the fixture if we are executing a function from the fixture
+            if fixture != file_path {
+                return self.source_fixture(&fixture);
+            }
+        }
+        self
+    }
+
+    fn source_test_file(mut self, file_path: &Path) -> RunFnCommandBuilder {
+        self.bash_command += &format!(
+            "echo Sourcing test file '{0}'; source '{0}'; ",
+            file_path.display()
+        );
+        self
+    }
+
+    fn execute_fn(mut self, fn_name: &str, target: &str, out_dir: &Path) -> RunFnCommandBuilder {
+        self.bash_command += &format!(
+            "\"{fn_name}\" \"{target}\" \"{out_dir}\";",
+            out_dir = out_dir.display()
+        );
+        self
+    }
+
+    fn build(self) -> String {
+        self.bash_command
+    }
+}
+
+struct BashCommandOutput {
+    output: Output,
+    skipped: Option<String>,
+}
+
+impl BashCommandOutput {
+    fn parse_output_env_vars(output: &std::process::Output) -> HashMap<String, String> {
+        let stdout = std::str::from_utf8(&output.stdout).unwrap_or("");
+        let env_vars: HashMap<String, String> = stdout
+            .lines()
+            .filter_map(|line| {
+                if let Some((key, value)) = line.split_once('=') {
+                    Some((key.to_string(), value.to_string()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        env_vars
+    }
+
+    fn new(output: std::process::Output) -> Self {
+        let env_vars = Self::parse_output_env_vars(&output);
+        Self {
+            output,
+            skipped: env_vars.get("BATRUN_SKIPPED").cloned(),
+        }
     }
 }

@@ -1,5 +1,3 @@
-use crate::test_suite::visitor::SkipReason;
-
 #[derive(Debug)]
 pub struct Statistics {
     passed: usize,
@@ -23,7 +21,14 @@ pub enum TestSuiteStatus {
     Finished(Statistics),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SkipReason {
+    TestCaseSpecificReason(String),
+    TestCaseSetupError,
+    TestSuiteSetupError,
+}
+
+#[derive(Debug, Clone)]
 pub enum TestCaseStatus {
     NotRun,
     Running,
