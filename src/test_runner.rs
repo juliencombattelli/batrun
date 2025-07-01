@@ -47,7 +47,14 @@ impl TestRunner {
     }
 
     pub fn run_tests(&mut self, test_suite_dir: &Path) -> Result<()> {
+        self.console_reporter.notice("");
+        self.console_reporter.notice(&format!(
+            "Running test suite `{}`...",
+            test_suite_dir.display()
+        ));
+
         self.prepare_out_dir()?;
+
         let test_suite = self.test_suites.get_mut(test_suite_dir)?;
         let test_driver = self.test_drivers.get(&test_suite.config().driver)?;
 

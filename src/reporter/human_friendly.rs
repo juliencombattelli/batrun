@@ -16,16 +16,6 @@ impl HumanFriendlyReporter {
         Self { debug_enabled }
     }
 
-    // fn log_test_result(&self, result: &TestCaseStatus) {
-    //     match result {
-    //         TestCaseStatus::Failed => println!("{}", "FAILED".red()),
-    //         TestCaseStatus::Passed => println!("{}", "PASSED".green()),
-    //         TestCaseStatus::Skipped(_) => println!("{}", "SKIPPED".dimmed()),
-    //         TestCaseStatus::DryRun => println!("{}", "DRYRUN".dimmed()),
-    //         _ => {}
-    //     }
-    // }
-
     #[track_caller]
     fn print_with_details(&self, prefix: ColoredString, message: &str, details: &str) {
         println!("{}{}", prefix, message.bright_white());
@@ -103,10 +93,13 @@ impl Reporter for HumanFriendlyReporter {
             statistics.runner_failed.to_string().red(),
             statistics.skipped.to_string().dimmed(),
         );
-        println!("");
     }
 
     fn report_total_time(&self) {}
+
+    fn notice_detailed(&self, message: &str, details: &str) {
+        self.print_with_details("".normal(), message, details)
+    }
 
     fn info_detailed(&self, message: &str, details: &str) {
         self.print_with_details("Info: ".cyan(), message, details)

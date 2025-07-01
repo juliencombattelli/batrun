@@ -4,6 +4,10 @@ use crate::test_suite::{TestCase, TestSuite};
 
 pub trait Reporter {
     #[track_caller]
+    fn notice(&self, message: &str) {
+        self.notice_detailed(message, "");
+    }
+    #[track_caller]
     fn info(&self, message: &str) {
         self.info_detailed(message, "");
     }
@@ -16,6 +20,8 @@ pub trait Reporter {
         self.error_detailed(message, "");
     }
 
+    #[track_caller]
+    fn notice_detailed(&self, message: &str, details: &str);
     #[track_caller]
     fn info_detailed(&self, message: &str, details: &str);
     #[track_caller]
