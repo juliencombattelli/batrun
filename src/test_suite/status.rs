@@ -6,22 +6,6 @@ pub struct Statistics {
     pub skipped: usize,
 }
 
-#[derive(Debug, Clone)]
-pub struct AbortReason(pub String);
-impl AbortReason {
-    pub fn new(reason: &str) -> Self {
-        Self(String::from(reason))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum TestSuiteStatus {
-    NotRun,
-    Running(Statistics),
-    Aborted(Statistics, AbortReason),
-    Finished(Statistics),
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SkipReason {
     TestCaseSpecificReason(String),

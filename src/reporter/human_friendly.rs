@@ -95,10 +95,6 @@ impl Reporter for HumanFriendlyReporter {
             for exec_context in exec_contexts {
                 self.print_summary_header(test_suite);
                 println!("  Target: {}", exec_context.target().white());
-                println!(
-                    "  Status: {}",
-                    format!("{:?}", exec_context.status()).white()
-                );
                 let statistics = exec_context.get_statistics();
                 println!(
                     "  Statistics: {} passed, {} failed, {} runner failed, {} skipped",

@@ -5,7 +5,7 @@ pub(crate) mod sequential;
 use crate::error::{self, Result};
 use crate::reporter::Reporter;
 use crate::test_driver::TestDriver;
-use crate::test_suite::status::{Statistics, TestCaseStatus, TestSuiteStatus};
+use crate::test_suite::status::{Statistics, TestCaseStatus};
 use crate::test_suite::visitor::{ShouldSkip, Visitor};
 use crate::test_suite::{TestCase, TestSuite};
 use crate::time::TimeInterval;
@@ -59,7 +59,6 @@ impl TestCaseExecInfo {
 
 pub struct ExecutionContext {
     target: String,
-    status: TestSuiteStatus,
     exec_info: HashMap<TestCase, TestCaseExecInfo>,
 }
 
@@ -73,19 +72,11 @@ impl<'tr> ExecutionContext {
                 Err(err) => panic!("{:?}", err),
             };
         });
-        Self {
-            target,
-            status: TestSuiteStatus::NotRun,
-            exec_info,
-        }
+        Self { target, exec_info }
     }
 
     pub fn target(&self) -> &str {
         &self.target
-    }
-
-    pub fn status(&self) -> TestSuiteStatus {
-        self.status.clone()
     }
 
     pub fn exec_info(&self) -> &HashMap<TestCase, TestCaseExecInfo> {
@@ -149,10 +140,6 @@ impl<'tr> ExecutionContext {
             Err(_) | Ok(TestCaseStatus::Failed) => Err(()),
             _ => Ok(()),
         }
-    }
-
-    pub fn set_test_suite_status(&mut self, status: TestSuiteStatus) {
-        self.status = status;
     }
 
     pub fn get_statistics(&self) -> Statistics {
