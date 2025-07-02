@@ -6,7 +6,7 @@ use crate::test_suite::{TestCase, TestFile, TestSuite, TestSuiteFixture};
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 
 pub(crate) struct BashTestDriver;
 
@@ -116,11 +116,12 @@ impl BashTestDriver {
             .args(["-x", "-e", "-u", "-o", "pipefail"])
             .arg("-c")
             .arg(&format!(
-                "{{ {run_fn_command} }} &> \"{log_file}\"; {{ env | grep -E '^BATRUN_' || true; }}",
+                "{{ {{ {run_fn_command} }}; {{ env | grep -E '^BATRUN_' || true; }}; }} &> \"{log_file}\";",
                 log_file = log_file.display()
-            ));
+            ))
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
 
-        // TODO redirect also stderr in case of runner failure
         let command_output = BashCommandOutput::new(bash_command.output().map_err(|io_err| {
             error::kind::TestDriverIo {
                 filename: PathBuf::from(bash_command.get_program()),
