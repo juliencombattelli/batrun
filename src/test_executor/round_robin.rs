@@ -34,8 +34,7 @@ impl<'tr> Executor<'tr> for RoundRobinExecutor {
             let visitor_context = &mut visitor_contexts[0];
             let exec_context = &mut visitor_context.execution_context;
             let visitor = &mut visitor_context.visitor;
-            // Ignore result as it is internally used by the visitor to know whether test cases should be skipped
-            let (done, _result) = visitor.visit_next(|test_case, should_skip| {
+            let done = visitor.visit_next(|test_case, should_skip| {
                 exec_context.run(reporter, test_driver, test_suite, test_case, should_skip)
             });
             if done {

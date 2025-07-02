@@ -30,9 +30,9 @@ impl<'ts> Visitor<'ts> {
         }
     }
 
-    pub fn visit_next<E>(&mut self, f: impl VisitorFnMut<E>) -> (bool, Result<(), E>) {
+    pub fn visit_next<E>(&mut self, f: impl VisitorFnMut<E>) -> bool {
         let mut done = false;
-        let (next_state, result) = match self.state {
+        let next_state = match self.state {
             State::TestSuiteSetup => self.visit_test_suite_setup(f),
             State::TestCaseSetup => self.visit_test_case_setup(f),
             State::TestCase => self.visit_test_case(f),
@@ -41,11 +41,11 @@ impl<'ts> Visitor<'ts> {
             // Treat all other states as a state machine termination point
             termination_state => {
                 done = true;
-                (termination_state, Ok(()))
+                termination_state
             }
         };
         self.state = next_state;
-        (done, result)
+        done
     }
 
     pub fn visit_next_ok(&mut self, mut f: impl VisitorFnMutOk) -> bool {
@@ -53,13 +53,12 @@ impl<'ts> Visitor<'ts> {
             f(&test_case, should_skip);
             Ok(())
         };
-        let (is_done, _result) = self.visit_next(&mut f_wrapped);
-        is_done
+        self.visit_next(&mut f_wrapped)
     }
 
     pub fn visit_all<E>(&mut self, mut f: impl VisitorFnMut<E>) {
         loop {
-            let (is_done, _result) = self.visit_next(&mut f);
+            let is_done = self.visit_next(&mut f);
             if is_done {
                 break;
             }
@@ -72,79 +71,67 @@ impl<'ts> Visitor<'ts> {
             Ok(())
         };
         loop {
-            let (is_done, _result) = self.visit_next(&mut f_wrapped);
+            let is_done = self.visit_next(&mut f_wrapped);
             if is_done {
                 break;
             }
         }
     }
 
-    fn visit_test_suite_setup<E>(&mut self, mut f: impl VisitorFnMut<E>) -> (State, Result<(), E>) {
-        let mut result = Ok(());
+    fn visit_test_suite_setup<E>(&mut self, mut f: impl VisitorFnMut<E>) -> State {
         if let Some(tc) = &self.test_suite.fixture.setup_test_case {
-            if let Err(e) = f(tc, self.should_skip.clone()) {
+            if let Err(_) = f(tc, self.should_skip.clone()) {
                 self.should_skip
                     .skip_with_reason(SkipReason::TestSuiteSetupError);
-                result = Err(e);
             }
         }
         self.test_file_iter = self.test_suite.test_files.iter().peekable();
-        (State::TestCaseSetup, result)
+        State::TestCaseSetup
     }
 
-    fn visit_test_case_setup<E>(&mut self, mut f: impl VisitorFnMut<E>) -> (State, Result<(), E>) {
+    fn visit_test_case_setup<E>(&mut self, mut f: impl VisitorFnMut<E>) -> State {
         // Reset the should_skip status if the stored advise was to skip the test cases from the
         // previous test file due to setup failure
         if let ShouldSkip::Yes(SkipReason::TestCaseSetupError) = self.should_skip {
             self.should_skip = ShouldSkip::No;
         }
-        let mut result = Ok(());
         if let Some(test_file) = self.test_file_iter.peek() {
             self.test_case_iter = test_file.test_cases.iter();
             if let Some(tc) = &test_file.setup_test_case {
-                if let Err(e) = f(tc, self.should_skip.clone()) {
+                if let Err(_) = f(tc, self.should_skip.clone()) {
                     self.should_skip
                         .skip_with_reason(SkipReason::TestCaseSetupError);
-                    result = Err(e);
                 }
             }
         }
-        (State::TestCase, result)
+        State::TestCase
     }
 
-    fn visit_test_case<E>(&mut self, mut f: impl VisitorFnMut<E>) -> (State, Result<(), E>) {
+    fn visit_test_case<E>(&mut self, mut f: impl VisitorFnMut<E>) -> State {
         if let Some(test_case) = self.test_case_iter.next() {
-            let result = f(test_case, self.should_skip.clone());
-            (State::TestCase, result)
+            let _ = f(test_case, self.should_skip.clone());
+            State::TestCase
         } else {
-            (State::TestCaseTeardown, Ok(()))
+            State::TestCaseTeardown
         }
     }
 
-    fn visit_test_case_teardown<E>(
-        &mut self,
-        mut f: impl VisitorFnMut<E>,
-    ) -> (State, Result<(), E>) {
+    fn visit_test_case_teardown<E>(&mut self, mut f: impl VisitorFnMut<E>) -> State {
         if let Some(test_file) = self.test_file_iter.next() {
-            let mut result = Ok(());
             if let Some(tc) = &test_file.teardown_test_case {
-                result = f(tc, self.should_skip.clone());
+                let _ = f(tc, self.should_skip.clone());
             }
-            (State::TestCaseSetup, result)
+            State::TestCaseSetup
         } else {
-            (State::TestSuiteTeardown, Ok(()))
+            State::TestSuiteTeardown
         }
     }
 
-    fn visit_test_suite_teardown<E>(
-        &mut self,
-        mut f: impl VisitorFnMut<E>,
-    ) -> (State, Result<(), E>) {
-        let mut result = Ok(());
+    fn visit_test_suite_teardown<E>(&mut self, mut f: impl VisitorFnMut<E>) -> State {
         if let Some(tc) = &self.test_suite.fixture.teardown_test_case {
-            result = f(tc, self.should_skip.clone());
+            let _ = f(tc, self.should_skip.clone());
         }
-        (State::Done, result)
+        State::Done
     }
 }
 
