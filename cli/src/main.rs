@@ -78,6 +78,10 @@ struct Cli {
     /// Output additional logs helping to debug batrun itself
     #[arg(short = 'd', long = "debug")]
     debug: bool,
+
+    /// Output the summary using a matrix format with test cases in rows and targets in columns
+    #[arg(short = 'm', long = "matrix-summary")]
+    matrix_summary: bool,
 }
 
 impl From<&Cli> for Settings {
@@ -90,6 +94,7 @@ impl From<&Cli> for Settings {
             dry_run: cli.dry_run,
             test_filter: None,
             debug: cli.debug,
+            matrix_summary: cli.matrix_summary,
         }
     }
 }
@@ -116,6 +121,7 @@ fn main_impl() -> Result<()> {
         }
     }
     let duration = start.elapsed();
+    println!();
     println!("Time elapsed: {}", format_duration(duration));
 
     Ok(())

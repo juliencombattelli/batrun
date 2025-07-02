@@ -9,11 +9,15 @@ use colored::{ColoredString, Colorize};
 
 pub struct HumanFriendlyReporter {
     debug_enabled: bool,
+    matrix_summary: bool,
 }
 
 impl HumanFriendlyReporter {
-    pub fn new(debug_enabled: bool) -> Self {
-        Self { debug_enabled }
+    pub fn new(debug_enabled: bool, matrix_summary: bool) -> Self {
+        Self {
+            debug_enabled,
+            matrix_summary,
+        }
     }
 
     #[track_caller]
@@ -70,29 +74,46 @@ impl Reporter for HumanFriendlyReporter {
     fn report_test_suite_execution_summary(
         &self,
         test_suite: &TestSuite,
-        exec_context: &ExecutionContext,
+        exec_contexts: &[ExecutionContext],
     ) {
-        println!(
-            "{}",
-            format!(
-                "Test suite `{}` execution summary",
-                test_suite.path().display()
-            )
-            .bright_white()
-        );
-        println!("  Target: {}", exec_context.target().white());
-        println!(
-            "  Status: {}",
-            format!("{:?}", exec_context.status()).white()
-        );
-        let statistics = exec_context.get_statistics();
-        println!(
-            "  Statistics: {} passed, {} failed, {} runner failed, {} skipped",
-            statistics.passed.to_string().green(),
-            statistics.failed.to_string().red(),
-            statistics.runner_failed.to_string().red(),
-            statistics.skipped.to_string().dimmed(),
-        );
+        if self.matrix_summary {
+            println!();
+            println!(
+                "{}",
+                format!(
+                    "Test suite `{}` execution summary",
+                    test_suite.path().display()
+                )
+                .bright_white()
+            );
+            TestSuiteSummaryPrettyPrinter::print_matrix_summary(test_suite, exec_contexts);
+        } else {
+            for exec_context in exec_contexts {
+                println!();
+                println!(
+                    "{}",
+                    format!(
+                        "Test suite `{}` execution summary",
+                        test_suite.path().display()
+                    )
+                    .bright_white()
+                );
+
+                println!("  Target: {}", exec_context.target().white());
+                println!(
+                    "  Status: {}",
+                    format!("{:?}", exec_context.status()).white()
+                );
+                let statistics = exec_context.get_statistics();
+                println!(
+                    "  Statistics: {} passed, {} failed, {} runner failed, {} skipped",
+                    statistics.passed.to_string().green(),
+                    statistics.failed.to_string().red(),
+                    statistics.runner_failed.to_string().red(),
+                    statistics.skipped.to_string().dimmed(),
+                );
+            }
+        }
     }
 
     fn report_total_time(&self) {}
@@ -155,5 +176,75 @@ impl Reporter for HumanFriendlyReporter {
                 Ok(TestCaseStatus::Running) => "RUNNING".dimmed().to_string(),
             }
         );
+    }
+}
+
+const CHAR_PASS: &str = "V";
+const CHAR_FAIL: &str = "X";
+const CHAR_RFAIL: &str = "O";
+const CHAR_SKIP: &str = ">";
+
+struct TestSuiteSummaryPrettyPrinter;
+impl TestSuiteSummaryPrettyPrinter {
+    fn max_row_width(test_suite: &TestSuite, _exec_contexts: &[ExecutionContext]) -> usize {
+        let mut row_width = 0;
+        Visitor::new(test_suite)
+            .visit_all_ok(|tc, _| row_width = std::cmp::max(row_width, tc.id().len()));
+        row_width
+    }
+
+    fn max_column_width(_test_suite: &TestSuite, exec_contexts: &[ExecutionContext]) -> usize {
+        let mut column_width = 0;
+        for exec_context in exec_contexts {
+            column_width = std::cmp::max(column_width, exec_context.target().len());
+        }
+        column_width
+    }
+
+    fn print_matrix_summary(test_suite: &TestSuite, exec_contexts: &[ExecutionContext]) {
+        let max_row_width = Self::max_row_width(test_suite, exec_contexts);
+        let max_column_width = Self::max_column_width(test_suite, exec_contexts);
+
+        let mut depth = 0;
+        for exec_context in exec_contexts {
+            print!("{:width$}", "", width = max_row_width + 1);
+            for _ in 0..depth {
+                print!("│ ")
+            }
+            print!("┌─ {}", exec_context.target());
+            print!(
+                "{:width$}",
+                "",
+                width = max_column_width - exec_context.target().len() + (exec_contexts.len() * 2)
+                    - (depth * 2)
+            );
+            let statistics = exec_context.get_statistics();
+            println!(
+                "{} passed, {} failed, {} runner failed, {} skipped",
+                statistics.passed.to_string().green(),
+                statistics.failed.to_string().red(),
+                statistics.runner_failed.to_string().red(),
+                statistics.skipped.to_string().dimmed(),
+            );
+            depth += 1
+        }
+
+        Visitor::new(test_suite).visit_all_ok(|tc, _| {
+            print!("{} ", tc.id());
+            print!("{:width$}", "", width = max_row_width - tc.id().len());
+            for exec_context in exec_contexts {
+                let exec_info = exec_context.exec_info().get(tc).unwrap();
+                let c = match exec_info.result() {
+                    Err(_) => CHAR_RFAIL.red().to_string(),
+                    Ok(TestCaseStatus::Failed) => CHAR_FAIL.red().to_string(),
+                    Ok(TestCaseStatus::Passed) => CHAR_PASS.green().to_string(),
+                    Ok(TestCaseStatus::Skipped(_)) => CHAR_SKIP.dimmed().to_string(),
+                    Ok(TestCaseStatus::DryRun) => CHAR_SKIP.dimmed().to_string(),
+                    _ => panic!("aie"),
+                };
+                print!("{} ", c);
+            }
+            println!();
+        });
     }
 }

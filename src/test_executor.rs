@@ -88,6 +88,10 @@ impl<'tr> ExecutionContext {
         self.status.clone()
     }
 
+    pub fn exec_info(&self) -> &HashMap<TestCase, TestCaseExecInfo> {
+        &self.exec_info
+    }
+
     pub fn prepare_test_case_out_dir(
         global_out_dir: &Path,
         target: &str,

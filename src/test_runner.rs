@@ -24,11 +24,12 @@ pub struct TestRunner {
 impl TestRunner {
     pub fn new(settings: Settings) -> Result<Self> {
         let debug_enabled = settings.debug;
+        let matrix_summary = settings.matrix_summary;
         let mut test_runner = Self {
             settings,
             test_drivers: TestDriverRegistry::new(),
             test_suites: TestSuiteRegistry::new(),
-            console_reporter: Box::new(HumanFriendlyReporter::new(debug_enabled)),
+            console_reporter: Box::new(HumanFriendlyReporter::new(debug_enabled, matrix_summary)),
         };
         test_runner.load_test_suites()?;
         Ok(test_runner)
@@ -75,10 +76,8 @@ impl TestRunner {
             self.settings.exec_strategy.clone(),
         );
 
-        for exec_context in &exec_contexts {
-            self.console_reporter
-                .report_test_suite_execution_summary(&test_suite, &exec_context);
-        }
+        self.console_reporter
+            .report_test_suite_execution_summary(&test_suite, &exec_contexts);
 
         Ok(())
     }

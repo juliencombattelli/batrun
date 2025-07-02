@@ -37,7 +37,7 @@ pub trait Reporter {
     fn report_test_suite_execution_summary(
         &self,
         test_suite: &TestSuite,
-        exec_context: &ExecutionContext,
+        exec_context: &[ExecutionContext],
     );
     fn report_total_time(&self);
     fn report_test_case_execution_started(

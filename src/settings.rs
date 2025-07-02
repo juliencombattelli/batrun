@@ -11,4 +11,5 @@ pub struct Settings {
     pub dry_run: bool,
     pub test_filter: Option<String>,
     pub debug: bool,
+    pub matrix_summary: bool,
 }
