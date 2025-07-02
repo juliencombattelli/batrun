@@ -36,6 +36,18 @@ impl HumanFriendlyReporter {
             println!("{}", source_location.dimmed());
         };
     }
+
+    fn print_summary_header(&self, test_suite: &TestSuite) {
+        println!();
+        println!(
+            "{}",
+            format!(
+                "Test suite `{}` execution summary",
+                test_suite.path().display()
+            )
+            .bright_white()
+        );
+    }
 }
 
 impl Reporter for HumanFriendlyReporter {
@@ -77,28 +89,11 @@ impl Reporter for HumanFriendlyReporter {
         exec_contexts: &[ExecutionContext],
     ) {
         if self.matrix_summary {
-            println!();
-            println!(
-                "{}",
-                format!(
-                    "Test suite `{}` execution summary",
-                    test_suite.path().display()
-                )
-                .bright_white()
-            );
+            self.print_summary_header(test_suite);
             TestSuiteSummaryPrettyPrinter::print_matrix_summary(test_suite, exec_contexts);
         } else {
             for exec_context in exec_contexts {
-                println!();
-                println!(
-                    "{}",
-                    format!(
-                        "Test suite `{}` execution summary",
-                        test_suite.path().display()
-                    )
-                    .bright_white()
-                );
-
+                self.print_summary_header(test_suite);
                 println!("  Target: {}", exec_context.target().white());
                 println!(
                     "  Status: {}",
