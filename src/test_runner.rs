@@ -54,18 +54,17 @@ impl TestRunner {
             test_suite_dir.display()
         ));
 
-        self.prepare_out_dir()?;
-
-        let test_suite = self.test_suites.get_mut(test_suite_dir)?;
+        let test_suite = self.test_suites.get(test_suite_dir)?;
         let test_driver = self.test_drivers.get(&test_suite.config().driver)?;
 
+        let out_dir = self.settings.out_dir.join(&test_suite.config().name);
+
+        self.prepare_out_dir(&out_dir)?;
         let mut exec_contexts = self
             .settings
             .targets
             .iter()
-            .map(|target| {
-                ExecutionContext::new(&test_suite, target.clone(), &self.settings.out_dir)
-            })
+            .map(|target| ExecutionContext::new(&test_suite, target.clone(), &out_dir))
             .collect::<Vec<_>>();
 
         Self::run_executor(
@@ -124,16 +123,15 @@ impl TestRunner {
         Ok(())
     }
 
-    fn prepare_out_dir(&self) -> Result<()> {
-        let out_dir = &self.settings.out_dir;
+    fn prepare_out_dir(&self, out_dir: &Path) -> Result<()> {
         if out_dir.exists() {
             self.console_reporter.warning(&format!(
                 "Output directory `{}` already exists. Contents may be overwritten.",
                 out_dir.display()
             ));
         } else {
-            fs::create_dir_all(out_dir).map_err(|io_err| error::kind::SuiteConfigIo {
-                filename: out_dir.clone(),
+            fs::create_dir_all(&out_dir).map_err(|io_err| error::kind::SuiteConfigIo {
+                filename: out_dir.to_path_buf(),
                 source: io_err,
             })?;
             self.console_reporter.info(&format!(
