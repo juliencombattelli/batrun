@@ -1,6 +1,6 @@
-pub mod parallel;
-pub mod round_robin;
-pub mod sequential;
+pub(crate) mod parallel;
+pub(crate) mod round_robin;
+pub(crate) mod sequential;
 
 use crate::error::{self, Result};
 use crate::reporter::Reporter;

@@ -3,7 +3,7 @@ use crate::test_driver::TestDriver;
 use crate::test_executor::{ExecutionContext, Executor};
 use crate::test_suite::TestSuite;
 
-pub struct ParallelExecutor;
+pub(crate) struct ParallelExecutor;
 
 impl<'tr> Executor<'tr> for ParallelExecutor {
     fn execute(

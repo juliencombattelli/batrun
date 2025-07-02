@@ -1,3 +1,3 @@
 use crate::reporter::Reporter;
 
-struct LoggingReporter;
+pub(crate) struct LoggingReporter;

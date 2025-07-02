@@ -1,5 +1,5 @@
-use crate::ExecutionStrategy;
 use crate::error::{self, Result};
+use crate::execution_strategy::ExecutionStrategy;
 use crate::reporter::Reporter;
 use crate::reporter::human_friendly::HumanFriendlyReporter;
 use crate::settings::Settings;

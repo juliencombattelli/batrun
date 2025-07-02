@@ -1,5 +1,8 @@
+use batrun::error::Result;
+use batrun::execution_strategy::ExecutionStrategy;
+use batrun::settings::Settings;
+use batrun::test_runner::TestRunner;
 use batrun::time::format as format_duration;
-use batrun::{ExecutionStrategy, Result, Settings, TestRunner};
 
 use clap::Parser;
 

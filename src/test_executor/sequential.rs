@@ -4,7 +4,7 @@ use crate::test_executor::{ExecutionContext, Executor};
 use crate::test_suite::TestSuite;
 use crate::test_suite::visitor::Visitor;
 
-pub struct SequentialExecutor;
+pub(crate) struct SequentialExecutor;
 
 impl<'tr> Executor<'tr> for SequentialExecutor {
     fn execute(

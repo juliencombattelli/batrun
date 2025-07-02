@@ -99,17 +99,17 @@ use bash::BashTestDriver;
 
 type TestDriverMap = HashMap<&'static str, Box<dyn TestDriver>>;
 
-pub struct TestDriverRegistry {
+pub(crate) struct TestDriverRegistry {
     test_drivers: TestDriverMap,
 }
 impl TestDriverRegistry {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let mut test_drivers = TestDriverMap::new();
         test_drivers.insert("bash", Box::new(BashTestDriver::new()));
         Self { test_drivers }
     }
 
-    pub fn get(&self, driver_name: &str) -> Result<&Box<dyn TestDriver>> {
+    pub(crate) fn get(&self, driver_name: &str) -> Result<&Box<dyn TestDriver>> {
         let test_driver = self.test_drivers.get(driver_name);
         match test_driver {
             Some(test_driver) => Ok(test_driver),

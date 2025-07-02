@@ -1,3 +1,3 @@
 use crate::reporter::Reporter;
 
-struct JsonReporter;
+pub(crate) struct JsonReporter;

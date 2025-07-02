@@ -55,7 +55,7 @@ pub trait Reporter {
     );
 }
 
-pub mod human_friendly;
-// pub mod json;
-// pub mod logging;
-// pub mod null;
+pub(crate) mod human_friendly;
+// pub(crate) mod json;
+// pub(crate) mod logging;
+// pub(crate) mod null;

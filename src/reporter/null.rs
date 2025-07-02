@@ -1,3 +1,3 @@
 use crate::reporter::Reporter;
 
-struct NullReporter;
+pub(crate) struct NullReporter;

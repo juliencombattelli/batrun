@@ -8,14 +8,14 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-pub struct BashTestDriver;
+pub(crate) struct BashTestDriver;
 
 impl BashTestDriver {
     const SETUP_FN_NAME: &str = "setup";
     const TEARDOWN_FN_NAME: &str = "teardown";
     const TEST_FN_PREFIX: &str = "test_";
 
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self
     }
 

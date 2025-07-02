@@ -7,13 +7,13 @@ use crate::test_suite::{TestCase, TestSuite};
 
 use colored::{ColoredString, Colorize};
 
-pub struct HumanFriendlyReporter {
+pub(crate) struct HumanFriendlyReporter {
     debug_enabled: bool,
     matrix_summary: bool,
 }
 
 impl HumanFriendlyReporter {
-    pub fn new(debug_enabled: bool, matrix_summary: bool) -> Self {
+    pub(crate) fn new(debug_enabled: bool, matrix_summary: bool) -> Self {
         Self {
             debug_enabled,
             matrix_summary,

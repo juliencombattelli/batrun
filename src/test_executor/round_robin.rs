@@ -6,7 +6,7 @@ use crate::test_suite::visitor::Visitor;
 
 use std::collections::VecDeque;
 
-pub struct RoundRobinExecutor;
+pub(crate) struct RoundRobinExecutor;
 
 impl<'tr> Executor<'tr> for RoundRobinExecutor {
     fn execute(
