@@ -6,7 +6,7 @@ use crate::test_suite::{TestCase, TestFile, TestSuite, TestSuiteFixture};
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::Command;
 
 pub(crate) struct BashTestDriver;
 
@@ -111,26 +111,29 @@ impl BashTestDriver {
             .execute_fn(fn_name, target, out_dir)
             .build();
 
+        let envout_file = log_file.with_extension("envout");
+
         let mut bash_command = Command::new("bash");
         bash_command
             .args(["-x", "-e", "-u", "-o", "pipefail"])
             .arg("-c")
             .arg(&format!(
-                "{{ {{ {run_fn_command} }}; {{ env | grep -E '^BATRUN_' || true; }}; }} &> \"{log_file}\";",
-                log_file = log_file.display()
-            ))
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit());
+                "{{ {run_fn_command} }} &> \"{log_file}\"; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\";",
+                log_file = log_file.display(),
+                envout_file = envout_file.display()
+            ));
 
-        let command_output = BashCommandOutput::new(bash_command.output().map_err(|io_err| {
-            error::kind::TestDriverIo {
+        let output = bash_command
+            .output()
+            .map_err(|io_err| error::kind::TestDriverIo {
                 filename: PathBuf::from(bash_command.get_program()),
                 source: io_err,
-            }
-        })?);
+            })?;
 
-        if command_output.output.status.success() {
-            if let Some(skipped_reason) = command_output.skipped {
+        let tc_output = TestCaseOutput::new(&envout_file);
+
+        if output.status.success() {
+            if let Some(skipped_reason) = tc_output.skipped {
                 return Ok(TestCaseStatus::Skipped(SkipReason::TestCaseSpecificReason(
                     skipped_reason,
                 )));
@@ -263,31 +266,43 @@ impl RunFnCommandBuilder {
     }
 }
 
-struct BashCommandOutput {
-    output: Output,
+struct TestCaseOutput {
+    unknown_env_vars: Vec<String>,
     skipped: Option<String>,
 }
 
-impl BashCommandOutput {
-    fn parse_output_env_vars(output: &std::process::Output) -> HashMap<String, String> {
-        let stdout = std::str::from_utf8(&output.stdout).unwrap_or("");
-        let env_vars: HashMap<String, String> = stdout
+impl TestCaseOutput {
+    const KNOWN_OUTPUT_ENV_VARS: &'static [&'static str] = &["BATRUN_SKIPPED"];
+
+    fn parse_output_env_vars(envout_file: &Path) -> (HashMap<String, String>, Vec<String>) {
+        let mut unknown_env_vars = Vec::new();
+        let env_vars = std::fs::read_to_string(envout_file)
+            .unwrap_or(String::new())
             .lines()
             .filter_map(|line| {
-                if let Some((key, value)) = line.split_once('=') {
-                    Some((key.to_string(), value.to_string()))
+                if let Some((envvar, value)) = line.split_once('=') {
+                    if Self::KNOWN_OUTPUT_ENV_VARS
+                        .iter()
+                        .find(|known_env_var| envvar == **known_env_var)
+                        .is_some()
+                    {
+                        Some((envvar.to_string(), value.to_string()))
+                    } else {
+                        unknown_env_vars.push(envvar.to_string());
+                        None
+                    }
                 } else {
                     None
                 }
             })
             .collect();
-        env_vars
+        (env_vars, unknown_env_vars)
     }
 
-    fn new(output: std::process::Output) -> Self {
-        let env_vars = Self::parse_output_env_vars(&output);
+    fn new(envout_file: &Path) -> Self {
+        let (env_vars, unknown_env_vars) = Self::parse_output_env_vars(&envout_file);
         Self {
-            output,
+            unknown_env_vars,
             skipped: env_vars.get("BATRUN_SKIPPED").cloned(),
         }
     }
