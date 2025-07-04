@@ -90,7 +90,7 @@ impl Reporter for HumanFriendlyReporter {
     ) {
         if self.matrix_summary {
             self.print_summary_header(test_suite);
-            TestSuiteSummaryPrettyPrinter::print_matrix_summary(test_suite, exec_contexts);
+            TestSuiteSummaryPrettyPrinter::new(test_suite, exec_contexts).print_matrix_summary();
         } else {
             for exec_context in exec_contexts {
                 self.print_summary_header(test_suite);
@@ -173,10 +173,41 @@ impl Reporter for HumanFriendlyReporter {
 const CHAR_PASS: &str = "V";
 const CHAR_FAIL: &str = "X";
 const CHAR_RFAIL: &str = "O";
-const CHAR_SKIP: &str = ">";
+const CHAR_SKIP: &str = "-";
 
-struct TestSuiteSummaryPrettyPrinter;
-impl TestSuiteSummaryPrettyPrinter {
+struct TestSuiteSummaryPrettyPrinter<'a> {
+    test_suite: &'a TestSuite,
+    exec_contexts: &'a [ExecutionContext],
+    max_row_width: usize,
+    max_column_width: usize,
+}
+
+impl<'a> TestSuiteSummaryPrettyPrinter<'a> {
+    fn new(test_suite: &'a TestSuite, exec_contexts: &'a [ExecutionContext]) -> Self {
+        Self {
+            test_suite,
+            exec_contexts,
+            max_row_width: Self::max_row_width(test_suite, exec_contexts),
+            max_column_width: Self::max_column_width(test_suite, exec_contexts),
+        }
+    }
+
+    fn char_pass() -> ColoredString {
+        CHAR_PASS.green()
+    }
+
+    fn char_fail() -> ColoredString {
+        CHAR_FAIL.red()
+    }
+
+    fn char_rfail() -> ColoredString {
+        CHAR_RFAIL.bright_red()
+    }
+
+    fn char_skip() -> ColoredString {
+        CHAR_SKIP.bright_black()
+    }
+
     fn max_row_width(test_suite: &TestSuite, _exec_contexts: &[ExecutionContext]) -> usize {
         let mut row_width = 0;
         Visitor::new(test_suite)
@@ -192,50 +223,87 @@ impl TestSuiteSummaryPrettyPrinter {
         column_width
     }
 
-    fn print_matrix_summary(test_suite: &TestSuite, exec_contexts: &[ExecutionContext]) {
-        let max_row_width = Self::max_row_width(test_suite, exec_contexts);
-        let max_column_width = Self::max_column_width(test_suite, exec_contexts);
+    fn pad(width: usize) {
+        print!("{:width$}", "");
+    }
 
+    fn print_legend(&mut self) {
+        Self::pad(self.max_row_width + 1);
+        println!(
+            "{}: passed    {}: skipped",
+            Self::char_pass(),
+            Self::char_skip(),
+        );
+        Self::pad(self.max_row_width + 1);
+        println!(
+            "{}: failed    {}: runner failed",
+            Self::char_fail(),
+            Self::char_rfail(),
+        );
+    }
+
+    fn print_single_statistic(&self, header: &ColoredString, stat: usize, max_stat_len: usize) {
+        print!("{header}: {stat:>width$}  ", width = max_stat_len)
+    }
+
+    fn print_statistics(&self, exec_context: &ExecutionContext) {
+        let stats = exec_context.get_statistics();
+        let max_stat_len = stats.max().to_string().len();
+        self.print_single_statistic(&Self::char_pass(), stats.passed, max_stat_len);
+        self.print_single_statistic(&Self::char_fail(), stats.failed, max_stat_len);
+        self.print_single_statistic(&Self::char_rfail(), stats.runner_failed, max_stat_len);
+        self.print_single_statistic(&Self::char_skip(), stats.skipped, max_stat_len);
+        println!("/ {}", stats.total());
+    }
+
+    fn print_target_summary(&self) {
         let mut depth = 0;
-        for exec_context in exec_contexts {
-            print!("{:width$}", "", width = max_row_width + 1);
+        for exec_context in self.exec_contexts {
+            Self::pad(self.max_row_width + 1);
             for _ in 0..depth {
                 print!("│ ")
             }
             print!("┌─ {}", exec_context.target());
-            print!(
-                "{:width$}",
-                "",
-                width = max_column_width - exec_context.target().len() + (exec_contexts.len() * 2)
-                    - (depth * 2)
+            Self::pad(
+                self.max_column_width - exec_context.target().len()
+                    + (self.exec_contexts.len() * 2)
+                    - (depth * 2),
             );
-            let statistics = exec_context.get_statistics();
-            println!(
-                "{} passed, {} failed, {} runner failed, {} skipped",
-                statistics.passed.to_string().green(),
-                statistics.failed.to_string().red(),
-                statistics.runner_failed.to_string().red(),
-                statistics.skipped.to_string().dimmed(),
-            );
+            self.print_statistics(exec_context);
             depth += 1
         }
+        Self::pad(self.max_row_width + 1);
+        for _ in 0..depth {
+            print!("╵ ");
+        }
+        println!();
+    }
 
-        Visitor::new(test_suite).visit_all_ok(|tc, _| {
+    fn print_test_cases_result(&self) {
+        Visitor::new(self.test_suite).visit_all_ok(|tc, _| {
             print!("{} ", tc.id());
-            print!("{:width$}", "", width = max_row_width - tc.id().len());
-            for exec_context in exec_contexts {
+            Self::pad(self.max_row_width - tc.id().len());
+            for exec_context in self.exec_contexts {
                 let exec_info = exec_context.exec_info().get(tc).unwrap();
                 let c = match exec_info.result() {
-                    Err(_) => CHAR_RFAIL.red().to_string(),
-                    Ok(TestCaseStatus::Failed) => CHAR_FAIL.red().to_string(),
-                    Ok(TestCaseStatus::Passed) => CHAR_PASS.green().to_string(),
-                    Ok(TestCaseStatus::Skipped(_)) => CHAR_SKIP.dimmed().to_string(),
-                    Ok(TestCaseStatus::DryRun) => CHAR_SKIP.dimmed().to_string(),
-                    _ => panic!("aie"),
+                    Err(_) => Self::char_rfail().to_string(),
+                    Ok(TestCaseStatus::Failed) => Self::char_fail().to_string(),
+                    Ok(TestCaseStatus::Passed) => Self::char_pass().to_string(),
+                    Ok(TestCaseStatus::Skipped(_)) => Self::char_skip().to_string(),
+                    Ok(TestCaseStatus::DryRun) => Self::char_skip().to_string(),
+                    _ => panic!("aie"), // TODO
                 };
                 print!("{} ", c);
             }
             println!();
         });
+    }
+
+    fn print_matrix_summary(&mut self) {
+        println!();
+        self.print_legend();
+        println!();
+        self.print_target_summary();
+        self.print_test_cases_result();
     }
 }
