@@ -1,0 +1,12 @@
+{
+    "name": "batrun-ivts-short",
+    "description": "Internal test suite validating batrun matrix summary with short names",
+    "version": "0.1",
+    "driver": "bash",
+    "test-file-pattern": ["*.sh"],
+    "targets": [
+        "foo",
+        "bar",
+        "baz"
+    ]
+}
