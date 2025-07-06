@@ -1,10 +1,11 @@
 use crate::error::{self, Error, Result};
-use crate::test_driver::TestDriver;
+use crate::test_driver::{RunTestOutput, TestDriver};
 use crate::test_suite::config::TestSuiteConfig;
 use crate::test_suite::status::{SkipReason, TestCaseStatus};
 use crate::test_suite::{TestCase, TestFile, TestSuite, TestSuiteFixture};
 
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -197,7 +198,12 @@ impl TestDriver for BashTestDriver {
         target: &str,
         test_case: &TestCase,
         test_case_out_dir: &Path,
-    ) -> Result<TestCaseStatus> {
+    ) -> Result<RunTestOutput> {
+        // TODO return a more complex structure carrying additional info from driver
+        // struct DriverRunTestResult {
+        //     test_case_status: TestCaseStatus,
+        //     driver_result: Box<dyn DriverResult>,
+        // }
         self.run_test_function_from_file(
             test_suite_dir,
             test_suite_config,
@@ -207,6 +213,14 @@ impl TestDriver for BashTestDriver {
             test_case_out_dir,
             &test_case_out_dir.join(format!("{}.log", test_case.name())),
         )
+    }
+}
+
+#[derive(Debug)]
+struct BashDriverOutput;
+impl Display for BashDriverOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
     }
 }
 
