@@ -1,10 +1,11 @@
 use crate::error::{self, Error, Result};
-use crate::test_driver::TestDriver;
+use crate::test_driver::{DriverOutput, RunTestOutput, TestDriver};
 use crate::test_suite::config::TestSuiteConfig;
 use crate::test_suite::status::{SkipReason, TestCaseStatus};
 use crate::test_suite::{TestCase, TestFile, TestSuite, TestSuiteFixture};
 
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -99,7 +100,7 @@ impl BashTestDriver {
         fn_name: &str,
         target: &str,
         out_dir: &Path,
-        log_file: &Path,
+        log_files: LogFiles,
     ) -> Result<TestCaseStatus> {
         let run_fn_command = RunFnCommandBuilder::new()
             .source_fixture_if_necessary(
@@ -111,17 +112,22 @@ impl BashTestDriver {
             .execute_fn(fn_name, target, out_dir)
             .build();
 
-        let envout_file = log_file.with_extension("envout");
-
         let mut bash_command = Command::new("bash");
         bash_command
             .args(["-x", "-e", "-u", "-o", "pipefail"])
             .arg("-c")
             .arg(&format!(
-                "{{ {run_fn_command} }} &> \"{log_file}\"; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\";",
-                log_file = log_file.display(),
-                envout_file = envout_file.display()
+                "exec {{BASH_XTRACEFD}}>> \"{debug_file}\"; set -x; \
+                {{ {run_fn_command} }} |& tee -a ${{BASH_XTRACEFD}} &>> \"{log_file}\"; \
+                {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\";",
+                log_file = log_files.test_case.display(),
+                debug_file = log_files.debug.display(),
+                envout_file = log_files.envout.display()
             ));
+
+        // create fd to log_file (LOG_FILEFD)
+        // create fd to debug_log (BASH_XTRACEFD)
+        // redirect LOG_FILEFD
 
         let output = bash_command
             .output()
@@ -130,7 +136,7 @@ impl BashTestDriver {
                 source: io_err,
             })?;
 
-        let tc_output = TestCaseOutput::new(&envout_file);
+        let tc_output = TestCaseOutput::new(&log_files.envout);
 
         if output.status.success() {
             if let Some(skipped_reason) = tc_output.skipped {
@@ -197,7 +203,7 @@ impl TestDriver for BashTestDriver {
         target: &str,
         test_case: &TestCase,
         test_case_out_dir: &Path,
-    ) -> Result<TestCaseStatus> {
+    ) -> Result<RunTestOutput> {
         self.run_test_function_from_file(
             test_suite_dir,
             test_suite_config,
@@ -205,8 +211,37 @@ impl TestDriver for BashTestDriver {
             test_case.name(),
             target,
             test_case_out_dir,
-            &test_case_out_dir.join(format!("{}.log", test_case.name())),
+            LogFiles::new(test_case_out_dir, test_case.name()),
         )
+        .map(|test_case_status| RunTestOutput {
+            test_case_status,
+            driver_output: None, // TODO
+        })
+    }
+}
+
+struct LogFiles {
+    test_case: PathBuf,
+    debug: PathBuf,
+    envout: PathBuf,
+}
+
+impl LogFiles {
+    pub fn new(test_case_out_dir: &Path, test_case_name: &str) -> Self {
+        Self {
+            test_case: test_case_out_dir.join(format!("{}.test.log", test_case_name)),
+            debug: test_case_out_dir.join(format!("{}.debug.log", test_case_name)),
+            envout: test_case_out_dir.join(format!("{}.envout.log", test_case_name)),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct BashDriverOutput;
+impl DriverOutput for BashDriverOutput {}
+impl Display for BashDriverOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
     }
 }
 

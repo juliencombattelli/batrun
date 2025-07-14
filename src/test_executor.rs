@@ -4,7 +4,7 @@ pub(crate) mod sequential;
 
 use crate::error::{self, Result};
 use crate::reporter::Reporter;
-use crate::test_driver::TestDriver;
+use crate::test_driver::{RunTestOutput, TestDriver};
 use crate::test_suite::status::{Statistics, TestCaseStatus};
 use crate::test_suite::visitor::{ShouldSkip, Visitor};
 use crate::test_suite::{TestCase, TestSuite};
@@ -121,7 +121,10 @@ impl<'tr> ExecutionContext {
 
         let result = {
             if let ShouldSkip::Yes(reason) = should_skip {
-                Ok(TestCaseStatus::Skipped(reason))
+                Ok(RunTestOutput {
+                    test_case_status: TestCaseStatus::Skipped(reason),
+                    driver_output: None, // TODO
+                })
             } else {
                 test_driver.run_test(
                     test_suite_dir,
@@ -133,7 +136,7 @@ impl<'tr> ExecutionContext {
             }
         };
 
-        tc_exec_info.set_result(result);
+        tc_exec_info.set_result(result.map(|run_test_output| run_test_output.test_case_status));
         reporter.report_test_case_execution_result(&test_case, &self.target, &tc_exec_info);
 
         match tc_exec_info.result {

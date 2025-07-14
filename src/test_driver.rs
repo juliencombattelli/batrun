@@ -4,7 +4,15 @@ use crate::test_suite::status::TestCaseStatus;
 use crate::test_suite::{TestCase, TestSuite};
 
 use std::collections::HashMap;
+use std::fmt::{Debug, Display};
 use std::path::{Path, PathBuf};
+
+pub trait DriverOutput: Debug + Display {}
+
+pub struct RunTestOutput {
+    pub test_case_status: TestCaseStatus,
+    pub driver_output: Option<Box<dyn DriverOutput>>,
+}
 
 pub trait TestDriver {
     fn test_file_patterns_default(&self) -> Vec<String>;
@@ -25,7 +33,7 @@ pub trait TestDriver {
         target: &str,
         test_case: &TestCase,
         test_case_out_dir: &Path,
-    ) -> Result<TestCaseStatus>;
+    ) -> Result<RunTestOutput>;
 
     fn test_file_pattern_or_default(&self, test_suite_config: &TestSuiteConfig) -> Vec<String> {
         if test_suite_config.test_file_patterns.is_empty() {
