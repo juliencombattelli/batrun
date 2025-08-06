@@ -4,7 +4,7 @@ pub(crate) mod sequential;
 
 use crate::error::{self, Result};
 use crate::reporter::Reporter;
-use crate::test_driver::TestDriver;
+use crate::test_driver::{RunTestOutput, TestDriver};
 use crate::test_suite::status::{Statistics, TestCaseStatus};
 use crate::test_suite::visitor::{ShouldSkip, Visitor};
 use crate::test_suite::{TestCase, TestSuite};
@@ -23,26 +23,34 @@ pub trait Executor<'tr> {
     );
 }
 
-#[derive(Debug)]
 pub struct TestCaseExecInfo {
-    result: Result<TestCaseStatus>,
+    result: Result<RunTestOutput>,
     duration: TimeInterval,
     out_dir: PathBuf,
 }
 impl TestCaseExecInfo {
     fn new(out_dir: PathBuf) -> Self {
         Self {
-            result: Ok(TestCaseStatus::NotRun),
+            result: Ok(RunTestOutput {
+                test_case_status: TestCaseStatus::NotRun,
+                driver_output: None,
+            }),
             duration: TimeInterval::new(),
             out_dir,
         }
     }
-    pub fn set_result(&mut self, result: Result<TestCaseStatus>) {
+    pub fn set_result(&mut self, result: Result<RunTestOutput>) {
         match result {
-            Ok(TestCaseStatus::NotRun) => {
+            Ok(RunTestOutput {
+                test_case_status: TestCaseStatus::NotRun,
+                driver_output: _,
+            }) => {
                 panic!("Test case status cannot be reset")
             }
-            Ok(TestCaseStatus::Running) => {
+            Ok(RunTestOutput {
+                test_case_status: TestCaseStatus::Running,
+                driver_output: _,
+            }) => {
                 self.result = result;
                 self.duration = TimeInterval::new();
             }
@@ -52,7 +60,7 @@ impl TestCaseExecInfo {
             }
         }
     }
-    pub fn result(&self) -> &Result<TestCaseStatus> {
+    pub fn result(&self) -> &Result<RunTestOutput> {
         &self.result
     }
 }
@@ -116,12 +124,18 @@ impl<'tr> ExecutionContext {
         // UNWRAP: exec_info is initialized with all test cases so the key is guaranteed to exist
         let tc_exec_info = self.exec_info.get_mut(test_case).unwrap();
 
-        tc_exec_info.set_result(Ok(TestCaseStatus::Running));
+        tc_exec_info.set_result(Ok(RunTestOutput {
+            test_case_status: TestCaseStatus::Running,
+            driver_output: None,
+        }));
         reporter.report_test_case_execution_started(&test_case, &self.target, &tc_exec_info);
 
         let result = {
             if let ShouldSkip::Yes(reason) = should_skip {
-                Ok(TestCaseStatus::Skipped(reason))
+                Ok(RunTestOutput {
+                    test_case_status: TestCaseStatus::Skipped(reason),
+                    driver_output: None, // TODO
+                })
             } else {
                 test_driver.run_test(
                     test_suite_dir,
@@ -136,7 +150,11 @@ impl<'tr> ExecutionContext {
         tc_exec_info.set_result(result);
         reporter.report_test_case_execution_result(&test_case, &self.target, &tc_exec_info);
 
-        match tc_exec_info.result {
+        match tc_exec_info
+            .result
+            .as_ref()
+            .map(|output| &output.test_case_status)
+        {
             Err(_) | Ok(TestCaseStatus::Failed) => Err(()),
             _ => Ok(()),
         }
@@ -146,7 +164,11 @@ impl<'tr> ExecutionContext {
         let mut stats = Statistics::default();
 
         for exec_info in self.exec_info.values() {
-            match exec_info.result {
+            match exec_info
+                .result
+                .as_ref()
+                .map(|output| &output.test_case_status)
+            {
                 Ok(TestCaseStatus::Passed) => stats.passed += 1,
                 Ok(TestCaseStatus::Failed) => stats.failed += 1,
                 Ok(TestCaseStatus::Skipped(_) | TestCaseStatus::DryRun) => stats.skipped += 1,

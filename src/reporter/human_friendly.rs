@@ -156,7 +156,11 @@ impl Reporter for HumanFriendlyReporter {
     ) {
         println!(
             " {}",
-            match exec_info.result() {
+            match exec_info
+                .result()
+                .as_ref()
+                .map(|output| &output.test_case_status)
+            {
                 Err(_) => "RUNNER_FAILED".red().to_string(),
                 Ok(TestCaseStatus::Failed) => "FAILED".red().to_string(),
                 Ok(TestCaseStatus::Passed) => "PASSED".green().to_string(),
@@ -167,6 +171,19 @@ impl Reporter for HumanFriendlyReporter {
                 Ok(TestCaseStatus::Running) => "RUNNING".dimmed().to_string(),
             }
         );
+        match exec_info
+            .result()
+            .as_ref()
+            .map(|output| &output.driver_output)
+        {
+            Ok(Some(driver_output)) => {
+                let driver_output_str = format!("{driver_output}");
+                if !driver_output_str.is_empty() {
+                    self.warning(&format!("{driver_output}"))
+                }
+            }
+            _ => (),
+        }
     }
 }
 
@@ -285,7 +302,11 @@ impl<'a> TestSuiteSummaryPrettyPrinter<'a> {
             Self::pad(self.max_row_width - tc.id().len());
             for exec_context in self.exec_contexts {
                 let exec_info = exec_context.exec_info().get(tc).unwrap();
-                let c = match exec_info.result() {
+                let c = match exec_info
+                    .result()
+                    .as_ref()
+                    .map(|output| &output.test_case_status)
+                {
                     Err(_) => Self::char_rfail().to_string(),
                     Ok(TestCaseStatus::Failed) => Self::char_fail().to_string(),
                     Ok(TestCaseStatus::Passed) => Self::char_pass().to_string(),
