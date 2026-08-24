@@ -114,12 +114,12 @@ impl BashTestDriver {
 
         let mut bash_command = Command::new("bash");
         bash_command
-            .args(["-x", "-e", "-u", "-o", "pipefail"])
+            .args(["-e", "-u", "-o", "pipefail"])
             .arg("-c")
             .arg(&format!(
-                "{{ {run_fn_command} }} &> \"{log_file}\"; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\";",
+                ": > \"{log_file}\"; exec 2>> \"{log_file}\"; set -x; {{ {{ {run_fn_command} }} 2>> \"{log_file}\" | tee -a \"{log_file}\" > \"{stdout_file}\"; }}; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\";",
                 log_file = log_files.test_case.display(),
-                // debug_file = log_files.debug.display(),
+                stdout_file = log_files.test_stdout.display(),
                 envout_file = log_files.envout.display()
             ));
 
@@ -130,7 +130,7 @@ impl BashTestDriver {
                 source: io_err,
             })?;
 
-        let tc_output = TestCaseOutput::new(&log_files.envout);
+        let tc_output = TestCaseOutput::new(&log_files.envout, &log_files.test_stdout);
 
         if output.status.success() {
             if let Some(ref skipped_reason) = tc_output.skipped {
@@ -219,6 +219,7 @@ impl TestDriver for BashTestDriver {
 
 struct LogFiles {
     test_case: PathBuf,
+    test_stdout: PathBuf,
     debug: PathBuf,
     envout: PathBuf,
 }
@@ -227,6 +228,7 @@ impl LogFiles {
     pub fn new(test_case_out_dir: &Path, test_case_name: &str) -> Self {
         Self {
             test_case: test_case_out_dir.join(format!("{}.test.log", test_case_name)),
+            test_stdout: test_case_out_dir.join(format!("{}.stdout.log", test_case_name)),
             debug: test_case_out_dir.join(format!("{}.debug.log", test_case_name)),
             envout: test_case_out_dir.join(format!("{}.envout.log", test_case_name)),
         }
@@ -236,7 +238,11 @@ impl LogFiles {
 struct BashDriverOutput {
     test_case_output: TestCaseOutput,
 }
-impl DriverOutput for BashDriverOutput {}
+impl DriverOutput for BashDriverOutput {
+    fn failure_details(&self) -> Option<&str> {
+        Some(&self.test_case_output.test_stdout)
+    }
+}
 impl Display for BashDriverOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.test_case_output.unknown_env_vars.len() != 0 {
@@ -310,6 +316,7 @@ impl RunFnCommandBuilder {
 struct TestCaseOutput {
     unknown_env_vars: Vec<String>,
     skipped: Option<String>,
+    test_stdout: String,
 }
 
 impl TestCaseOutput {
@@ -340,11 +347,12 @@ impl TestCaseOutput {
         (env_vars, unknown_env_vars)
     }
 
-    fn new(envout_file: &Path) -> Self {
+    fn new(envout_file: &Path, stdout_file: &Path) -> Self {
         let (env_vars, unknown_env_vars) = Self::parse_output_env_vars(&envout_file);
         Self {
             unknown_env_vars,
             skipped: env_vars.get("BATRUN_SKIPPED").cloned(),
+            test_stdout: std::fs::read_to_string(stdout_file).unwrap_or_default(),
         }
     }
 }

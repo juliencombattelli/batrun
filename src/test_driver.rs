@@ -7,7 +7,11 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
-pub trait DriverOutput: Display {}
+pub trait DriverOutput: Display {
+    fn failure_details(&self) -> Option<&str> {
+        None
+    }
+}
 
 pub struct RunTestOutput {
     pub test_case_status: TestCaseStatus,

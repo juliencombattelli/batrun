@@ -24,12 +24,17 @@ pub struct TestRunner {
 impl TestRunner {
     pub fn new(settings: Settings) -> Result<Self> {
         let debug_enabled = settings.debug;
+        let show_error_details = settings.show_error_details;
         let matrix_summary = settings.matrix_summary;
         let mut test_runner = Self {
             settings,
             test_drivers: TestDriverRegistry::new(),
             test_suites: TestSuiteRegistry::new(),
-            console_reporter: Box::new(HumanFriendlyReporter::new(debug_enabled, matrix_summary)),
+            console_reporter: Box::new(HumanFriendlyReporter::new(
+                debug_enabled,
+                show_error_details,
+                matrix_summary,
+            )),
         };
         test_runner.load_test_suites()?;
         Ok(test_runner)

@@ -9,13 +9,19 @@ use colored::{ColoredString, Colorize};
 
 pub(crate) struct HumanFriendlyReporter {
     debug_enabled: bool,
+    show_error_details: bool,
     matrix_summary: bool,
 }
 
 impl HumanFriendlyReporter {
-    pub(crate) fn new(debug_enabled: bool, matrix_summary: bool) -> Self {
+    pub(crate) fn new(
+        debug_enabled: bool,
+        show_error_details: bool,
+        matrix_summary: bool,
+    ) -> Self {
         Self {
             debug_enabled,
+            show_error_details,
             matrix_summary,
         }
     }
@@ -171,18 +177,21 @@ impl Reporter for HumanFriendlyReporter {
                 Ok(TestCaseStatus::Running) => "RUNNING".dimmed().to_string(),
             }
         );
-        match exec_info
-            .result()
-            .as_ref()
-            .map(|output| &output.driver_output)
-        {
-            Ok(Some(driver_output)) => {
+        if let Ok(output) = exec_info.result().as_ref() {
+            if self.show_error_details && matches!(output.test_case_status, TestCaseStatus::Failed) {
+                if let Some(driver_output) = &output.driver_output {
+                    if let Some(details) = driver_output.failure_details() {
+                        if !details.is_empty() {
+                            println!("{}", details.trim_end().bright_black());
+                        }
+                    }
+                }
+            } else if let Some(driver_output) = &output.driver_output {
                 let driver_output_str = format!("{driver_output}");
                 if !driver_output_str.is_empty() {
-                    self.warning(&format!("{driver_output}"))
+                    self.warning(&driver_output_str)
                 }
             }
-            _ => (),
         }
     }
 }
