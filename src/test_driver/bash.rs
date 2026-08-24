@@ -6,6 +6,7 @@ use crate::test_suite::{TestCase, TestFile, TestSuite, TestSuiteFixture};
 
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -15,6 +16,7 @@ impl BashTestDriver {
     const SETUP_FN_NAME: &str = "setup";
     const TEARDOWN_FN_NAME: &str = "teardown";
     const TEST_FN_PREFIX: &str = "test_";
+    const TRACE_MARKER: &str = "__BATRUN_TRACE__";
 
     pub(crate) fn new() -> Self {
         Self
@@ -117,10 +119,9 @@ impl BashTestDriver {
             .args(["-e", "-u", "-o", "pipefail"])
             .arg("-c")
             .arg(&format!(
-                ": > \"{log_file}\"; exec 2>> \"{log_file}\"; set -x; {{ {{ {run_fn_command} }} 2>> \"{log_file}\" | tee -a \"{log_file}\" > \"{stdout_file}\"; }}; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\";",
-                log_file = log_files.test_case.display(),
-                stdout_file = log_files.test_stdout.display(),
-                envout_file = log_files.envout.display()
+                "exec 2>&1; PS4='{trace_marker} '; set -x; set +e; {run_fn_command} test_status=$?; set -e; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\"; exit $test_status;",
+                envout_file = log_files.envout.display(),
+                trace_marker = Self::TRACE_MARKER
             ));
 
         let output = bash_command
@@ -130,7 +131,17 @@ impl BashTestDriver {
                 source: io_err,
             })?;
 
-        let tc_output = TestCaseOutput::new(&log_files.envout, &log_files.test_stdout);
+        let (stdout, mixed_log) = split_output(&output.stdout);
+        fs::write(&log_files.debug, mixed_log).map_err(|io_err| error::kind::TestDriverIo {
+            filename: log_files.debug.clone(),
+            source: io_err,
+        })?;
+        fs::write(&log_files.stdout, &stdout).map_err(|io_err| error::kind::TestDriverIo {
+            filename: log_files.stdout.clone(),
+            source: io_err,
+        })?;
+
+        let tc_output = TestCaseOutput::new(&log_files.envout, &log_files.stdout);
 
         if output.status.success() {
             if let Some(ref skipped_reason) = tc_output.skipped {
@@ -146,6 +157,29 @@ impl BashTestDriver {
             Ok((TestCaseStatus::Failed, tc_output))
         }
     }
+}
+
+fn split_output(output: &[u8]) -> (String, String) {
+    let output = String::from_utf8_lossy(output);
+    let mut stdout = String::new();
+    let mut mixed_log = String::new();
+
+    for line in output.split_inclusive('\n') {
+        let trace_prefix_end = line
+            .find(BashTestDriver::TRACE_MARKER)
+            .filter(|index| line[..*index].chars().all(|character| character == '_'));
+        if let Some(trace_prefix_end) = trace_prefix_end {
+            let trace_line = &line[trace_prefix_end + BashTestDriver::TRACE_MARKER.len()..];
+            // TODO should we support custom user-provided PS4 env var in the debug logs?
+            mixed_log.push_str("+ ");
+            mixed_log.push_str(trace_line);
+        } else {
+            mixed_log.push_str(line);
+            stdout.push_str(line);
+        }
+    }
+
+    (stdout, mixed_log)
 }
 
 impl TestDriver for BashTestDriver {
@@ -218,8 +252,7 @@ impl TestDriver for BashTestDriver {
 }
 
 struct LogFiles {
-    test_case: PathBuf,
-    test_stdout: PathBuf,
+    stdout: PathBuf,
     debug: PathBuf,
     envout: PathBuf,
 }
@@ -227,8 +260,7 @@ struct LogFiles {
 impl LogFiles {
     pub fn new(test_case_out_dir: &Path, test_case_name: &str) -> Self {
         Self {
-            test_case: test_case_out_dir.join(format!("{}.test.log", test_case_name)),
-            test_stdout: test_case_out_dir.join(format!("{}.stdout.log", test_case_name)),
+            stdout: test_case_out_dir.join(format!("{}.stdout.log", test_case_name)),
             debug: test_case_out_dir.join(format!("{}.debug.log", test_case_name)),
             envout: test_case_out_dir.join(format!("{}.envout.log", test_case_name)),
         }
