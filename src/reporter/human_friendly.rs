@@ -14,11 +14,7 @@ pub(crate) struct HumanFriendlyReporter {
 }
 
 impl HumanFriendlyReporter {
-    pub(crate) fn new(
-        debug_enabled: bool,
-        hide_error_details: bool,
-        matrix_summary: bool,
-    ) -> Self {
+    pub(crate) fn new(debug_enabled: bool, hide_error_details: bool, matrix_summary: bool) -> Self {
         Self {
             debug_enabled,
             hide_error_details,
@@ -178,7 +174,8 @@ impl Reporter for HumanFriendlyReporter {
             }
         );
         if let Ok(output) = exec_info.result().as_ref() {
-            if !self.hide_error_details && matches!(output.test_case_status, TestCaseStatus::Failed) {
+            if !self.hide_error_details && matches!(output.test_case_status, TestCaseStatus::Failed)
+            {
                 if let Some(driver_output) = &output.driver_output {
                     if let Some(details) = driver_output.failure_details() {
                         if !details.is_empty() {
@@ -240,12 +237,10 @@ impl<'a> TestSuiteSummaryPrettyPrinter<'a> {
             .visit_all_ok(|tc, _| row_width = std::cmp::max(row_width, tc.id().len()));
         let max_column_width = Self::max_column_width(test_suite, exec_contexts);
         for (depth, exec_context) in exec_contexts.iter().enumerate() {
-            let target_prefix_width = max_column_width + 2 + Self::statistics_width(exec_context) + 1;
+            let target_prefix_width =
+                max_column_width + 2 + Self::statistics_width(exec_context) + 1;
             let arrow_offset = depth * 2 + 1;
-            row_width = std::cmp::max(
-                row_width,
-                target_prefix_width.saturating_sub(arrow_offset),
-            );
+            row_width = std::cmp::max(row_width, target_prefix_width.saturating_sub(arrow_offset));
         }
         row_width
     }
@@ -307,7 +302,8 @@ impl<'a> TestSuiteSummaryPrettyPrinter<'a> {
             Self::pad(self.max_column_width - exec_context.target().len() + 2);
             self.print_statistics(exec_context);
             print!(" ");
-            let target_prefix_width = self.max_column_width + 2 + Self::statistics_width(exec_context) + 1;
+            let target_prefix_width =
+                self.max_column_width + 2 + Self::statistics_width(exec_context) + 1;
             let arrow_position = self.max_row_width + 1 + (depth * 2);
             for _ in 0..arrow_position.saturating_sub(target_prefix_width) {
                 print!("─");
