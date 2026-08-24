@@ -9,7 +9,7 @@ pub enum ExecutionStrategy {
     /// Run each test case for all targets before passing to the next test case
     #[clap(aliases = &["r", "rr"])]
     RoundRobin,
-    /// Run all test cases for each targets in parallel
+    /// Run all test cases for each targets in parallel (not yet implemented)
     #[clap(aliases = &["p", "par"])]
     Parallel,
 }

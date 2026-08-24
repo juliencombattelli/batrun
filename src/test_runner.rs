@@ -96,7 +96,7 @@ impl TestRunner {
         let executor: Box<dyn Executor> = match exec_strategy {
             ExecutionStrategy::RoundRobin => Box::new(RoundRobinExecutor {}),
             ExecutionStrategy::Sequential => Box::new(SequentialExecutor {}),
-            _ => todo!("{:X?}", exec_strategy),
+            _ => todo!("execution strategy `{:X?}`", exec_strategy),
         };
         executor.execute(reporter, test_driver, test_suite, exec_contexts);
     }
