@@ -82,9 +82,9 @@ struct Cli {
     #[arg(short = 'd', long = "debug")]
     debug: bool,
 
-    /// Show detailed output from failed test cases
-    #[arg(long = "show-error-details")]
-    show_error_details: bool,
+    /// Hide detailed output from failed test cases
+    #[arg(long = "hide-error-details")]
+    hide_error_details: bool,
 
     /// Output the summary using a matrix format with test cases in rows and targets in columns
     #[arg(short = 'm', long = "matrix-summary")]
@@ -101,7 +101,7 @@ impl From<&Cli> for Settings {
             dry_run: cli.dry_run,
             test_filter: None,
             debug: cli.debug,
-            show_error_details: cli.show_error_details,
+            hide_error_details: cli.hide_error_details,
             matrix_summary: cli.matrix_summary,
         }
     }

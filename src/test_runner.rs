@@ -24,7 +24,7 @@ pub struct TestRunner {
 impl TestRunner {
     pub fn new(settings: Settings) -> Result<Self> {
         let debug_enabled = settings.debug;
-        let show_error_details = settings.show_error_details;
+        let hide_error_details = settings.hide_error_details;
         let matrix_summary = settings.matrix_summary;
         let mut test_runner = Self {
             settings,
@@ -32,7 +32,7 @@ impl TestRunner {
             test_suites: TestSuiteRegistry::new(),
             console_reporter: Box::new(HumanFriendlyReporter::new(
                 debug_enabled,
-                show_error_details,
+                hide_error_details,
                 matrix_summary,
             )),
         };

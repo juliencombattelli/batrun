@@ -9,19 +9,19 @@ use colored::{ColoredString, Colorize};
 
 pub(crate) struct HumanFriendlyReporter {
     debug_enabled: bool,
-    show_error_details: bool,
+    hide_error_details: bool,
     matrix_summary: bool,
 }
 
 impl HumanFriendlyReporter {
     pub(crate) fn new(
         debug_enabled: bool,
-        show_error_details: bool,
+        hide_error_details: bool,
         matrix_summary: bool,
     ) -> Self {
         Self {
             debug_enabled,
-            show_error_details,
+            hide_error_details,
             matrix_summary,
         }
     }
@@ -178,7 +178,7 @@ impl Reporter for HumanFriendlyReporter {
             }
         );
         if let Ok(output) = exec_info.result().as_ref() {
-            if self.show_error_details && matches!(output.test_case_status, TestCaseStatus::Failed) {
+            if !self.hide_error_details && matches!(output.test_case_status, TestCaseStatus::Failed) {
                 if let Some(driver_output) = &output.driver_output {
                     if let Some(details) = driver_output.failure_details() {
                         if !details.is_empty() {
