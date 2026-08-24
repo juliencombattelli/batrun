@@ -302,7 +302,7 @@ impl RunFnCommandBuilder {
 
     fn source_fixture(mut self, fixture: &Path) -> RunFnCommandBuilder {
         self.bash_command += &format!(
-            "echo Sourcing global fixture '{0}'; source '{0}'; ",
+            "source '{0}'; ",
             fixture.display()
         );
         self
@@ -326,7 +326,7 @@ impl RunFnCommandBuilder {
 
     fn source_test_file(mut self, file_path: &Path) -> RunFnCommandBuilder {
         self.bash_command += &format!(
-            "echo Sourcing test file '{0}'; source '{0}'; ",
+            "source '{0}'; ",
             file_path.display()
         );
         self
