@@ -10,7 +10,7 @@ impl<'tr> Executor<'tr> for SequentialExecutor {
     fn execute(
         &self,
         reporter: &'tr Box<dyn Reporter>,
-        test_driver: &'tr Box<(dyn TestDriver + 'static)>,
+        test_driver: &'tr Box<dyn TestDriver + 'static>,
         test_suite: &'tr TestSuite,
         exec_contexts: &'tr mut [ExecutionContext],
     ) {
