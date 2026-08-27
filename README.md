@@ -26,7 +26,7 @@ cargo build --release
 
 ## Running the Internal Validation Test Suite (IVTS)
 
-The internal validation test suite in tests/ is used to validate the behaviour of batrun.
+The internal validation test suite in tests/ is used to validate the behavior of Batrun.
 To run it, execute the following command:
 ```bash
 batrun tests/ivts tests/ivts-setup-failed --out-dir out --target foo bar
