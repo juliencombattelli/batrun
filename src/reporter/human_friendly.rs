@@ -5,7 +5,7 @@ use crate::test_suite::status::TestCaseStatus;
 use crate::test_suite::visitor::Visitor;
 use crate::test_suite::{TestCase, TestSuite};
 
-use colored::{ColoredString, Colorize};
+use colored::{Color, ColoredString, Colorize};
 
 pub(crate) struct HumanFriendlyReporter {
     debug_enabled: bool,
@@ -257,7 +257,21 @@ impl<'a> TestSuiteSummaryPrettyPrinter<'a> {
         print!("{:width$}", "");
     }
 
+    fn pad_with_colored_char(width: usize, color: Color, char: char) {
+        let pad = char.to_string().repeat(width);
+        print!("{}", format!("{pad}").color(color));
+    }
+
+    fn pad_dotted(width: usize) {
+        print!(" ");
+        if width > 0 {
+            Self::pad_with_colored_char(width - 1, Color::BrightBlack, '·');
+            print!(" ");
+        }
+    }
+
     fn print_legend(&mut self) {
+        println!("{}", format!("Legend").bright_white());
         println!(
             "{}: passed    {}: skipped",
             Self::char_pass(),
@@ -296,14 +310,22 @@ impl<'a> TestSuiteSummaryPrettyPrinter<'a> {
             print!("╷ ");
         }
         println!();
+        let summary_header = "Summary";
+        print!("{} ", format!("{}", summary_header).bright_white());
+        Self::pad(self.max_row_width - summary_header.len());
+        let depth = self.exec_contexts.len();
+        for _ in 0..depth {
+            print!("│ ");
+        }
+        println!();
         for (depth, exec_context) in self.exec_contexts.iter().enumerate() {
             let connector_depth = self.exec_contexts.len() - depth - 1;
             print!("{}", exec_context.target());
-            Self::pad(self.max_column_width - exec_context.target().len() + 2);
+            Self::pad_dotted(self.max_column_width - exec_context.target().len());
             self.print_statistics(exec_context);
             print!(" ");
             let target_prefix_width =
-                self.max_column_width + 2 + Self::statistics_width(exec_context) + 1;
+                self.max_column_width + Self::statistics_width(exec_context) + 2;
             let arrow_position = self.max_row_width + 1 + (depth * 2);
             for _ in 0..arrow_position.saturating_sub(target_prefix_width) {
                 print!("─");
@@ -316,10 +338,18 @@ impl<'a> TestSuiteSummaryPrettyPrinter<'a> {
         }
     }
 
-    fn print_test_cases_result(&self) {
+    fn print_test_cases_results_header(&self) {
+        let test_cases_header = "Test cases";
+        let results_header = "Results";
+        print!("{} ", format!("{}", test_cases_header).bright_white());
+        Self::pad(self.max_row_width - test_cases_header.len());
+        println!("{}", format!("{}", results_header).bright_white());
+    }
+
+    fn print_test_cases_results(&self) {
         Visitor::new(self.test_suite).visit_all_ok(|tc, _| {
-            print!("{} ", tc.id());
-            Self::pad(self.max_row_width - tc.id().len());
+            print!("{}", tc.id());
+            Self::pad_dotted(self.max_row_width - tc.id().len());
             for exec_context in self.exec_contexts {
                 let exec_info = exec_context.exec_info().get(tc).unwrap();
                 let c = match exec_info
@@ -344,7 +374,8 @@ impl<'a> TestSuiteSummaryPrettyPrinter<'a> {
         println!();
         self.print_legend();
         println!();
-        self.print_test_cases_result();
+        self.print_test_cases_results_header();
+        self.print_test_cases_results();
         self.print_target_summary();
     }
 }
