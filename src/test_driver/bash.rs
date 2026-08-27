@@ -119,7 +119,7 @@ impl BashTestDriver {
             .args(["-e", "-u", "-o", "pipefail"])
             .arg("-c")
             .arg(&format!(
-                "exec 2>&1; PS4='{trace_marker} '; set -x; set +e; {run_fn_command} test_status=$?; set -e; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\"; exit $test_status;",
+                "exec 2>&1; PS4='{trace_marker} '; set -x; {run_fn_command} test_status=$?; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\"; exit $test_status;",
                 envout_file = log_files.envout.display(),
                 trace_marker = Self::TRACE_MARKER
             ));
