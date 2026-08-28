@@ -71,6 +71,7 @@ version = "2.0.0-alpha"
 dependencies = [
  "batrun",
  "clap",
+ "serde_json",
 ]
 
 [[package]]

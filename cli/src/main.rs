@@ -1,6 +1,6 @@
 use batrun::error::Result;
 use batrun::execution_strategy::ExecutionStrategy;
-use batrun::settings::Settings;
+use batrun::settings::{OutputFormat, Settings};
 use batrun::test_runner::TestRunner;
 use batrun::time::format as format_duration;
 
@@ -48,7 +48,8 @@ pub fn batrun_cli_styles() -> clap::builder::Styles {
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "batrun", styles = batrun_cli_styles(), version)]
+#[command(name = "batrun", styles = batrun_cli_styles(), version)]
+/// Bash Test Runner (BaTRun 🦇) executes test suites written in Bash
 struct Cli {
     /// Directory where the test suite is located
     #[arg(required = true, value_name = "TEST_SUITE_DIR")]
@@ -89,6 +90,10 @@ struct Cli {
     /// Output the summary using a matrix format with test cases in rows and targets in columns
     #[arg(short = 'm', long = "matrix-summary")]
     matrix_summary: bool,
+
+    /// Output reports using the selected format
+    #[arg(value_enum, short = 'f', long = "format", default_value_t = OutputFormat::Human)]
+    output_format: OutputFormat,
 }
 
 impl From<&Cli> for Settings {
@@ -103,6 +108,7 @@ impl From<&Cli> for Settings {
             debug: cli.debug,
             hide_error_details: cli.hide_error_details,
             matrix_summary: cli.matrix_summary,
+            output_format: cli.output_format,
         }
     }
 }
@@ -128,9 +134,12 @@ fn main_impl() -> Result<()> {
             }
         }
     }
+    test_runner.report_total_time();
     let duration = start.elapsed();
-    println!();
-    println!("Time elapsed: {}", format_duration(duration));
+    if matches!(cli.output_format, OutputFormat::Human) {
+        println!();
+        println!("Time elapsed: {}", format_duration(duration));
+    }
 
     Ok(())
 }

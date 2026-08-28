@@ -2,6 +2,8 @@ use crate::error::{self, Result};
 use crate::execution_strategy::ExecutionStrategy;
 use crate::reporter::Reporter;
 use crate::reporter::human_friendly::HumanFriendlyReporter;
+use crate::reporter::json::JsonReporter;
+use crate::settings::OutputFormat;
 use crate::settings::Settings;
 use crate::test_driver::{TestDriver, TestDriverRegistry};
 use crate::test_executor::round_robin::RoundRobinExecutor;
@@ -19,6 +21,7 @@ pub struct TestRunner {
     test_drivers: TestDriverRegistry,
     test_suites: TestSuiteRegistry,
     console_reporter: Box<dyn Reporter>,
+    additional_reporters: Vec<Box<dyn Reporter>>,
 }
 
 impl TestRunner {
@@ -26,15 +29,20 @@ impl TestRunner {
         let debug_enabled = settings.debug;
         let hide_error_details = settings.hide_error_details;
         let matrix_summary = settings.matrix_summary;
+        let output_format = settings.output_format;
         let mut test_runner = Self {
             settings,
             test_drivers: TestDriverRegistry::new(),
             test_suites: TestSuiteRegistry::new(),
-            console_reporter: Box::new(HumanFriendlyReporter::new(
-                debug_enabled,
-                hide_error_details,
-                matrix_summary,
-            )),
+            console_reporter: match output_format {
+                OutputFormat::Human => Box::new(HumanFriendlyReporter::new(
+                    debug_enabled,
+                    hide_error_details,
+                    matrix_summary,
+                )),
+                OutputFormat::Json => Box::new(JsonReporter::new()),
+            },
+            additional_reporters: Vec::new(),
         };
         test_runner.load_test_suites()?;
         Ok(test_runner)
@@ -103,6 +111,10 @@ impl TestRunner {
 
     pub fn settings(&self) -> &Settings {
         &self.settings
+    }
+
+    pub fn report_total_time(&self) {
+        self.console_reporter.report_total_time();
     }
 
     fn load_test_suites(&mut self) -> Result<()> {

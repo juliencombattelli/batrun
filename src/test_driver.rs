@@ -8,7 +8,7 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
 pub trait DriverOutput: Display {
-    fn failure_details(&self) -> Option<&str> {
+    fn output(&self) -> Option<&str> {
         None
     }
 }

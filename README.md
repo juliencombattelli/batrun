@@ -31,3 +31,9 @@ To run it, execute the following command:
 ```bash
 batrun tests/ivts tests/ivts-setup-failed --out-dir out --target foo bar
 ```
+
+Use `--format json` to emit one machine-readable report containing each suite,
+target, test result, skip reason, and execution statistic:
+```bash
+batrun tests/ivts tests/ivts-setup-failed --out-dir out --target foo bar --format json
+```

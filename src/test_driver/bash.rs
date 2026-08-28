@@ -270,11 +270,13 @@ impl LogFiles {
 struct BashDriverOutput {
     test_case_output: TestCaseOutput,
 }
+
 impl DriverOutput for BashDriverOutput {
-    fn failure_details(&self) -> Option<&str> {
+    fn output(&self) -> Option<&str> {
         Some(&self.test_case_output.test_stdout)
     }
 }
+
 impl Display for BashDriverOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.test_case_output.unknown_env_vars.len() != 0 {
@@ -339,6 +341,7 @@ impl RunFnCommandBuilder {
     }
 }
 
+#[derive(Clone)]
 struct TestCaseOutput {
     unknown_env_vars: Vec<String>,
     skipped: Option<String>,

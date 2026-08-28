@@ -174,10 +174,9 @@ impl Reporter for HumanFriendlyReporter {
             }
         );
         if let Ok(output) = exec_info.result().as_ref() {
-            if !self.hide_error_details && matches!(output.test_case_status, TestCaseStatus::Failed)
-            {
+            if !self.hide_error_details && output.test_case_status == TestCaseStatus::Failed {
                 if let Some(driver_output) = &output.driver_output {
-                    if let Some(details) = driver_output.failure_details() {
+                    if let Some(details) = driver_output.output() {
                         if !details.is_empty() {
                             println!("{}", details.trim_end().bright_black());
                         }

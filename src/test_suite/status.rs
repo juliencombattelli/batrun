@@ -33,7 +33,7 @@ pub enum SkipReason {
     TestSuiteSetupError,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TestCaseStatus {
     NotRun,
     Running,
