@@ -47,6 +47,8 @@ pub fn batrun_cli_styles() -> clap::builder::Styles {
         .placeholder(Style::new().fg_color(Some(Color::Ansi(AnsiColor::White))))
 }
 
+const FORMAT_HUMAN_OPTION_HEADER: &str = "Options for --format human";
+
 #[derive(Parser, Debug)]
 #[command(name = "batrun", styles = batrun_cli_styles(), version)]
 /// Bash Test Runner (BaTRun 🦇) executes test suites written in Bash
@@ -75,6 +77,10 @@ struct Cli {
     #[arg(value_enum, short = 's', long = "exec-strategy", default_value_t = ExecutionStrategy::RoundRobin)]
     exec_strategy: ExecutionStrategy,
 
+    /// Output reports using the selected format
+    #[arg(value_enum, short = 'f', long = "format", default_value_t = OutputFormat::Human)]
+    output_format: OutputFormat,
+
     /// Go through all tests but execute nothing
     #[arg(short = 'n', long = "dry-run")]
     dry_run: bool,
@@ -84,16 +90,21 @@ struct Cli {
     debug: bool,
 
     /// Hide detailed output from failed test cases
-    #[arg(long = "hide-error-details")]
+    #[arg(
+        long = "hide-error-details",
+        requires_if("human", "output_format"),
+        help_heading = FORMAT_HUMAN_OPTION_HEADER,
+    )]
     hide_error_details: bool,
 
     /// Output the summary using a matrix format with test cases in rows and targets in columns
-    #[arg(short = 'm', long = "matrix-summary")]
+    #[arg(
+        short = 'm',
+        long = "matrix-summary",
+        requires_if("human", "output_format"),
+        help_heading = FORMAT_HUMAN_OPTION_HEADER,
+    )]
     matrix_summary: bool,
-
-    /// Output reports using the selected format
-    #[arg(value_enum, short = 'f', long = "format", default_value_t = OutputFormat::Human)]
-    output_format: OutputFormat,
 }
 
 impl From<&Cli> for Settings {
