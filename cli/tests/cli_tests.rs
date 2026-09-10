@@ -99,5 +99,39 @@ fn test_binary_runs_ivts_with_json_reporter() {
         let test_output = std::fs::read_to_string(&test_output)
             .unwrap_or_else(|error| panic!("failed to read {}: {error}", test_output.display()));
         assert!(test_output.starts_with("Test 01 on device "));
+
+        let trace_output_dir = output_dir
+            .join("batrun-ivts")
+            .join(target)
+            .join("01-ivts/40-debug-output-desync.sh");
+        let stdout_path = trace_output_dir.join("test_debug_output_desync.stdout.log");
+        let stdout = std::fs::read_to_string(&stdout_path)
+            .unwrap_or_else(|error| panic!("failed to read {}: {error}", stdout_path.display()));
+        assert_eq!(
+            stdout,
+            "OUTPUT: before multiline trace\n\
+             OUTPUT: after multiline trace\n\
+             TRACE VALUE: line 1\n\
+             TRACE VALUE: line 2\n\
+             TRACE VALUE: line 3\n\
+             OUTPUT: final marker\n"
+        );
+
+        let debug_path = trace_output_dir.join("test_debug_output_desync.debug.log");
+        let debug = std::fs::read_to_string(&debug_path)
+            .unwrap_or_else(|error| panic!("failed to read {}: {error}", debug_path.display()));
+        assert!(debug.contains("+ echo \"OUTPUT: before multiline trace\"\n"));
+        assert!(debug.contains("+ printf '%s\\n' \"$multiline_value\"\n"));
+
+        let output_before = debug.find("OUTPUT: before multiline trace\n").unwrap();
+        let multiline_trace = debug
+            .find(
+                "+ local -r multiline_value='TRACE VALUE: line 1\n\
+                 TRACE VALUE: line 2\n\
+                 TRACE VALUE: line 3'\n",
+            )
+            .unwrap();
+        let output_after = debug.find("OUTPUT: after multiline trace\n").unwrap();
+        assert!(output_before < multiline_trace && multiline_trace < output_after);
     }
 }

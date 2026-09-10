@@ -9,6 +9,9 @@ use std::fmt::Display;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static TRACE_MARKER_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) struct BashTestDriver;
 
@@ -113,13 +116,17 @@ impl BashTestDriver {
             .execute_fn(fn_name, target, out_dir)
             .build();
 
+        let trace_marker = format!(
+            "BATRUN_TRACE_{}_{}",
+            std::process::id(),
+            TRACE_MARKER_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        );
         let mut bash_command = Command::new("bash");
         bash_command
             .args(["-e", "-u", "-o", "pipefail"])
             .arg("-c")
             .arg(&format!(
-                "exec 2>&1; exec 3>\"{debug_file}\"; BASH_XTRACEFD=3; set -x; {run_fn_command} test_status=$?; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\"; exit $test_status;",
-                debug_file = log_files.debug.display(),
+                "exec 2>&1; set -o functrace; __batrun_trace() {{ printf '\\0{trace_marker}\\0%s\\0' \"$1\"; }}; trap '__batrun_trace \"$BASH_COMMAND\"' DEBUG; {run_fn_command} test_status=$?; trap - DEBUG; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\"; exit $test_status;",
                 envout_file = log_files.envout.display(),
             ));
 
@@ -130,11 +137,15 @@ impl BashTestDriver {
                 source: io_err,
             })?;
 
-        fs::write(&log_files.stdout, &output.stdout).map_err(|io_err| {
-            error::kind::TestDriverIo {
-                filename: log_files.stdout.clone(),
-                source: io_err,
-            }
+        let (test_stdout, debug_output) = split_trace_output(&output.stdout, &trace_marker);
+
+        fs::write(&log_files.stdout, test_stdout).map_err(|io_err| error::kind::TestDriverIo {
+            filename: log_files.stdout.clone(),
+            source: io_err,
+        })?;
+        fs::write(&log_files.debug, debug_output).map_err(|io_err| error::kind::TestDriverIo {
+            filename: log_files.debug.clone(),
+            source: io_err,
         })?;
 
         let tc_output = TestCaseOutput::new(&log_files.envout, &log_files.stdout);
@@ -153,6 +164,40 @@ impl BashTestDriver {
             Ok((TestCaseStatus::Failed, tc_output))
         }
     }
+}
+
+fn split_trace_output(output: &[u8], trace_marker: &str) -> (Vec<u8>, Vec<u8>) {
+    let trace_prefix = [b"\0".as_slice(), trace_marker.as_bytes(), b"\0".as_slice()].concat();
+    let mut test_stdout = Vec::with_capacity(output.len());
+    let mut debug_output = Vec::with_capacity(output.len());
+    let mut cursor = 0;
+
+    while let Some(relative_start) = output[cursor..]
+        .windows(trace_prefix.len())
+        .position(|window| window == trace_prefix)
+    {
+        let frame_start = cursor + relative_start;
+        test_stdout.extend_from_slice(&output[cursor..frame_start]);
+        debug_output.extend_from_slice(&output[cursor..frame_start]);
+
+        let trace_start = frame_start + trace_prefix.len();
+        let Some(relative_end) = output[trace_start..].iter().position(|byte| *byte == b'\0')
+        else {
+            test_stdout.extend_from_slice(&output[frame_start..]);
+            debug_output.extend_from_slice(&output[frame_start..]);
+            return (test_stdout, debug_output);
+        };
+        let trace_end = trace_start + relative_end;
+
+        debug_output.extend_from_slice(b"+ ");
+        debug_output.extend_from_slice(&output[trace_start..trace_end]);
+        debug_output.push(b'\n');
+        cursor = trace_end + 1;
+    }
+
+    test_stdout.extend_from_slice(&output[cursor..]);
+    debug_output.extend_from_slice(&output[cursor..]);
+    (test_stdout, debug_output)
 }
 
 impl TestDriver for BashTestDriver {
@@ -356,5 +401,31 @@ impl TestCaseOutput {
             skipped: env_vars.get("BATRUN_SKIPPED").cloned(),
             test_stdout: std::fs::read_to_string(stdout_file).unwrap_or_default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_trace_output;
+
+    #[test]
+    fn splits_framed_multiline_traces_from_ordered_output() {
+        let marker = "BATRUN_TRACE_TEST";
+        let captured_output = [
+            b"\0BATRUN_TRACE_TEST\0echo 'before'\0".as_slice(),
+            b"OUTPUT: before\n".as_slice(),
+            b"\0BATRUN_TRACE_TEST\0local value='one\ntwo'\0".as_slice(),
+            b"\0BATRUN_TRACE_TEST\0echo \"$value\"\0".as_slice(),
+            b"OUTPUT: after\none\ntwo\n".as_slice(),
+        ]
+        .concat();
+
+        let (test_stdout, debug_output) = split_trace_output(&captured_output, marker);
+
+        assert_eq!(test_stdout, b"OUTPUT: before\nOUTPUT: after\none\ntwo\n");
+        assert_eq!(
+            debug_output,
+            b"+ echo 'before'\nOUTPUT: before\n+ local value='one\ntwo'\n+ echo \"$value\"\nOUTPUT: after\none\ntwo\n"
+        );
     }
 }
