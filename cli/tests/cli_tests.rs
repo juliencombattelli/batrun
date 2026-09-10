@@ -50,11 +50,11 @@ fn test_binary_runs_ivts_with_json_reporter() {
         assert_eq!(
             ivts_target["statistics"],
             serde_json::json!({
-                "passed": 14,
+                "passed": 15,
                 "failed": 7,
                 "runner_failed": 0,
                 "skipped": 3,
-                "total": 24,
+                "total": 25,
             })
         );
 
