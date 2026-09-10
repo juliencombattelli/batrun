@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+const RUN_TEST_SCRIPT: &str = include_str!("bash/run_test.bash");
 static TRACE_MARKER_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) struct BashTestDriver;
@@ -106,16 +107,11 @@ impl BashTestDriver {
         out_dir: &Path,
         log_files: LogFiles,
     ) -> Result<(TestCaseStatus, TestCaseOutput)> {
-        let run_fn_command = RunFnCommandBuilder::new()
-            .source_fixture_if_necessary(
-                test_suite_config.global_fixture.clone(),
-                file_path,
-                test_suite_dir,
-            )
-            .source_test_file(&file_path)
-            .execute_fn(fn_name, target, out_dir)
-            .build();
-
+        let fixture_path = test_suite_config
+            .global_fixture
+            .as_ref()
+            .map(|fixture| test_suite_dir.join(fixture))
+            .unwrap_or_default();
         let trace_marker = format!(
             "BATRUN_TRACE_{}_{}",
             std::process::id(),
@@ -125,10 +121,15 @@ impl BashTestDriver {
         bash_command
             .args(["-e", "-u", "-o", "pipefail"])
             .arg("-c")
-            .arg(&format!(
-                "exec 2>&1; set -o functrace; __batrun_trace() {{ printf '\\0{trace_marker}\\0%s\\0' \"$1\"; }}; trap '__batrun_trace \"$BASH_COMMAND\"' DEBUG; {run_fn_command} test_status=$?; trap - DEBUG; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\"; exit $test_status;",
-                envout_file = log_files.envout.display(),
-            ));
+            .arg(RUN_TEST_SCRIPT)
+            .arg("batrun-test-driver")
+            .arg(fixture_path)
+            .arg(file_path)
+            .arg(fn_name)
+            .arg(target)
+            .arg(out_dir)
+            .arg(&log_files.envout)
+            .arg(&trace_marker);
 
         let output = bash_command
             .output()
@@ -306,56 +307,6 @@ impl Display for BashDriverOutput {
         } else {
             Ok(())
         }
-    }
-}
-
-struct RunFnCommandBuilder {
-    bash_command: String,
-}
-
-impl RunFnCommandBuilder {
-    fn new() -> Self {
-        Self {
-            bash_command: String::new(),
-        }
-    }
-
-    fn source_fixture(mut self, fixture: &Path) -> RunFnCommandBuilder {
-        self.bash_command += &format!("source '{0}'; ", fixture.display());
-        self
-    }
-
-    fn source_fixture_if_necessary(
-        self,
-        fixture: Option<String>,
-        file_path: &Path,
-        test_suite_dir: &Path,
-    ) -> RunFnCommandBuilder {
-        if let Some(fixture) = &fixture {
-            let fixture = test_suite_dir.join(fixture);
-            // Do not source the fixture if we are executing a function from the fixture
-            if fixture != file_path {
-                return self.source_fixture(&fixture);
-            }
-        }
-        self
-    }
-
-    fn source_test_file(mut self, file_path: &Path) -> RunFnCommandBuilder {
-        self.bash_command += &format!("source '{0}'; ", file_path.display());
-        self
-    }
-
-    fn execute_fn(mut self, fn_name: &str, target: &str, out_dir: &Path) -> RunFnCommandBuilder {
-        self.bash_command += &format!(
-            "\"{fn_name}\" \"{target}\" \"{out_dir}\";",
-            out_dir = out_dir.display()
-        );
-        self
-    }
-
-    fn build(self) -> String {
-        self.bash_command
     }
 }
 
