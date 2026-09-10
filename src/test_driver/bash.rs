@@ -16,7 +16,6 @@ impl BashTestDriver {
     const SETUP_FN_NAME: &str = "setup";
     const TEARDOWN_FN_NAME: &str = "teardown";
     const TEST_FN_PREFIX: &str = "test_";
-    const TRACE_MARKER: &str = "__BATRUN_TRACE__";
 
     pub(crate) fn new() -> Self {
         Self
@@ -119,9 +118,9 @@ impl BashTestDriver {
             .args(["-e", "-u", "-o", "pipefail"])
             .arg("-c")
             .arg(&format!(
-                "exec 2>&1; PS4='{trace_marker} '; set -x; {run_fn_command} test_status=$?; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\"; exit $test_status;",
+                "exec 2>&1; exec 3>\"{debug_file}\"; BASH_XTRACEFD=3; set -x; {run_fn_command} test_status=$?; {{ env | grep -E '^BATRUN_' || true; }} > \"{envout_file}\"; exit $test_status;",
+                debug_file = log_files.debug.display(),
                 envout_file = log_files.envout.display(),
-                trace_marker = Self::TRACE_MARKER
             ));
 
         let output = bash_command
@@ -131,14 +130,11 @@ impl BashTestDriver {
                 source: io_err,
             })?;
 
-        let (stdout, mixed_log) = split_output(&output.stdout);
-        fs::write(&log_files.debug, mixed_log).map_err(|io_err| error::kind::TestDriverIo {
-            filename: log_files.debug.clone(),
-            source: io_err,
-        })?;
-        fs::write(&log_files.stdout, &stdout).map_err(|io_err| error::kind::TestDriverIo {
-            filename: log_files.stdout.clone(),
-            source: io_err,
+        fs::write(&log_files.stdout, &output.stdout).map_err(|io_err| {
+            error::kind::TestDriverIo {
+                filename: log_files.stdout.clone(),
+                source: io_err,
+            }
         })?;
 
         let tc_output = TestCaseOutput::new(&log_files.envout, &log_files.stdout);
@@ -157,29 +153,6 @@ impl BashTestDriver {
             Ok((TestCaseStatus::Failed, tc_output))
         }
     }
-}
-
-fn split_output(output: &[u8]) -> (String, String) {
-    let output = String::from_utf8_lossy(output);
-    let mut stdout = String::new();
-    let mut mixed_log = String::new();
-
-    for line in output.split_inclusive('\n') {
-        let trace_prefix_end = line
-            .find(BashTestDriver::TRACE_MARKER)
-            .filter(|index| line[..*index].chars().all(|character| character == '_'));
-        if let Some(trace_prefix_end) = trace_prefix_end {
-            let trace_line = &line[trace_prefix_end + BashTestDriver::TRACE_MARKER.len()..];
-            // TODO should we support custom user-provided PS4 env var in the debug logs?
-            mixed_log.push_str("+ ");
-            mixed_log.push_str(trace_line);
-        } else {
-            mixed_log.push_str(line);
-            stdout.push_str(line);
-        }
-    }
-
-    (stdout, mixed_log)
 }
 
 impl TestDriver for BashTestDriver {
