@@ -114,6 +114,7 @@ fn test_binary_runs_ivts_with_json_reporter() {
              TRACE VALUE: line 1\n\
              TRACE VALUE: line 2\n\
              TRACE VALUE: line 3\n\
+               OUTPUT: SUBSTITUTION VALUE\n\
              OUTPUT: final marker\n"
         );
 
@@ -122,6 +123,7 @@ fn test_binary_runs_ivts_with_json_reporter() {
             .unwrap_or_else(|error| panic!("failed to read {}: {error}", debug_path.display()));
         assert!(debug.contains("+ echo \"OUTPUT: before multiline trace\"\n"));
         assert!(debug.contains("+ printf '%s\\n' \"$multiline_value\"\n"));
+        assert!(debug.contains("+ printf 'SUBSTITUTION VALUE'\n"));
 
         let output_before = debug.find("OUTPUT: before multiline trace\n").unwrap();
         let multiline_trace = debug
