@@ -137,3 +137,39 @@ fn test_binary_runs_ivts_with_json_reporter() {
         assert!(output_before < multiline_trace && multiline_trace < output_after);
     }
 }
+
+#[test]
+fn test_binary_runs_all_suite_targets() {
+    let binary_path = env!("CARGO_BIN_EXE_batrun");
+    let tests_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../tests");
+    let output_dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("batrun-cli-tests-all-{}", std::process::id()));
+
+    let output = Command::new(binary_path)
+        .arg(tests_dir.join("ivts"))
+        .arg("--out-dir")
+        .arg(&output_dir)
+        .arg("--target")
+        .arg("all")
+        .arg("--format")
+        .arg("json")
+        .output()
+        .expect("failed to execute binary");
+
+    assert!(
+        output.status.success(),
+        "binary exited with an error status: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Value = serde_json::from_slice(&output.stdout)
+        .expect("JSON reporter output should be one valid JSON document");
+    let targets = report["test_suites"][0]["targets"]
+        .as_array()
+        .expect("JSON report should contain targets");
+    let target_names: Vec<_> = targets
+        .iter()
+        .map(|target| target["target"].as_str().unwrap())
+        .collect();
+    assert_eq!(target_names, ["foo", "bar", "baz"]);
+}

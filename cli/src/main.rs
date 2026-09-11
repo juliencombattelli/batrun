@@ -61,8 +61,8 @@ struct Cli {
     #[arg(short = 'o', long = "out-dir", default_value = DEFAULT_OUT_DIR)]
     out_dir: PathBuf,
 
-    /// Targets to run the tests on; select all available targets if not provided
-    #[arg(short = 't', long = "target", num_args(0..))]
+    /// Targets to run the tests on; use `all` to select every available target
+    #[arg(short = 't', long = "target", num_args(0..), default_value = "all")]
     targets: Vec<String>,
 
     /// List targets supported by the specified test suite

@@ -73,9 +73,12 @@ impl TestRunner {
         let out_dir = self.settings.out_dir.join(&test_suite.config().name);
 
         self.prepare_out_dir(&out_dir)?;
-        let mut exec_contexts = self
-            .settings
-            .targets
+        let targets = if self.settings.targets.iter().any(|target| target == "all") {
+            &test_suite.config().targets
+        } else {
+            &self.settings.targets
+        };
+        let mut exec_contexts = targets
             .iter()
             .map(|target| ExecutionContext::new(&test_suite, target.clone(), &out_dir))
             .collect::<Vec<_>>();
